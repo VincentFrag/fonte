@@ -167,6 +167,25 @@ L'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois pa
 
 ---
 
+## Licence
+
+Fonte est sous **[PolyForm Noncommercial 1.0.0](LICENSE)**. En résumé (seul le texte anglais du fichier `LICENSE` fait foi) :
+
+- ✅ **Tu peux** utiliser l'app gratuitement, pour toi, ta famille, tes amis, une association, une école ;
+- ✅ **Tu peux** la copier, la modifier et partager tes versions, à condition de garder le fichier `LICENSE` et la mention `Required Notice` ;
+- ❌ **Tu ne peux pas** la vendre, ni l'utiliser dans un produit ou un service payant, sans l'accord de l'auteur ;
+- ⚠️ L'app est fournie **telle quelle, sans garantie**. Adapte les programmes à ton niveau et demande conseil à un professionnel en cas de doute.
+
+Pour un usage commercial, contacte l'auteur via son profil GitHub.
+
+Les composants tiers (bibliothèque Supabase, police Archivo) gardent leur propre licence : voir [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Contribuer
+
+Une idée, un bug, une amélioration ? Tout est expliqué dans [CONTRIBUTING.md](CONTRIBUTING.md) : signaler un problème dans l'onglet **Issues**, ou proposer une modification avec une **Pull request**.
+
+---
+
 ## Pour les développeurs
 
 ### Modifier l'app
@@ -179,6 +198,9 @@ L'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois pa
 
 ```
 fonte/
+├── LICENSE                 Licence (PolyForm Noncommercial 1.0.0)
+├── CONTRIBUTING.md         Comment proposer une idée ou une modification
+├── THIRD_PARTY_NOTICES.md  Licences des composants tiers
 ├── index.html              Page unique de l'app
 ├── config.js               URL et clé publique Supabase
 ├── manifest.webmanifest    Nom, icônes, mode plein écran
