@@ -57,7 +57,7 @@ export function renderBody(view, ctx) {
           <div class="list-row static">
             <span class="list-main">${esc(calc.fmtDay(calc.dayToDate(p.day)))}</span>
             <span class="list-value">${esc(calc.fmt(p.weight))} kg</span>
-            <button class="icon-btn" data-del="${p.day}" aria-label="${esc(t('Supprimer la pesée du {date}', { date: calc.fmtShort(calc.dayToDate(p.day)) }))}">${icon('trash')}</button>
+            <button class="icon-btn" data-del="${esc(p.day)}" aria-label="${esc(t('Supprimer la pesée du {date}', { date: calc.fmtShort(calc.dayToDate(p.day)) }))}">${icon('trash')}</button>
           </div>`).join('')}</div>
           ${list.length > 10 ? `<button class="btn ghost block" data-all>${showAll ? t('Afficher moins') : t('Afficher les {n} pesées', { n: list.length })}</button>` : ''}` : `<p class="empty">${t('Aucune pesée pour l’instant.')}</p>`}
       </section>`;

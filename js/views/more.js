@@ -196,7 +196,7 @@ export function renderTemplateEdit(view, ctx, id) {
         ${tpl.items.map((it, i) => {
           const ex = store.getAny('exercises', it.exercise_id);
           const mode = calc.modeOf(ex);
-          const field = (f, label, aria) => `<label><span class="sr-only">${esc(t(aria))}</span><span class="tpl-mini" aria-hidden="true">${esc(t(label))}</span><input class="num" inputmode="numeric" data-f="${f}" value="${it[f] ?? ''}"></label>`;
+          const field = (f, label, aria) => `<label><span class="sr-only">${esc(t(aria))}</span><span class="tpl-mini" aria-hidden="true">${esc(t(label))}</span><input class="num" inputmode="numeric" data-f="${f}" value="${esc(it[f] ?? '')}"></label>`;
           const blank = '<span class="tpl-blank" aria-hidden="true"></span>';
           let fields;
           if (mode === 'duree') {
@@ -519,7 +519,9 @@ async function shareOrDownload(filename, text, type) {
 }
 
 function csvCell(v) {
-  const s = v == null ? '' : String(v);
+  let s = v == null ? '' : String(v);
+  // Un texte qui commence par = + - @ serait exécuté comme formule par le tableur
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s) && !/^-?\d/.test(s)) s = `'${s}`;
   return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

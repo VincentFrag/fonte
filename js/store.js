@@ -1,6 +1,8 @@
 // Stockage local (IndexedDB) + état en mémoire.
 // Toutes les données vivent d'abord sur l'appareil ; la synchro les envoie ensuite au cloud.
 
+import { cleanRow } from './clean.js';
+
 const DB_NAME = 'fonte';
 const DB_VERSION = 1;
 
@@ -62,7 +64,10 @@ export async function load() {
   db = await openDb();
   for (const t of Object.keys(TABLES)) {
     const rows = await req(tx(t).getAll());
-    for (const r of rows) data[t].set(r[TABLES[t].key], r);
+    for (const r of rows) {
+      const c = cleanRow(t, r);
+      if (c) data[t].set(c[TABLES[t].key], { ...c, _dirty: r._dirty === true });
+    }
   }
   version++;
 }
@@ -147,11 +152,8 @@ export function mergeRemote(table, rows) {
     const local = data[table].get(key);
     if (local && local._dirty && Date.parse(local.updated_at) > Date.parse(remote.updated_at)) continue;
     if (local && !local._dirty && local.updated_at && Date.parse(local.updated_at) === Date.parse(remote.updated_at)) continue;
-    const row = {};
-    for (const c of TABLES[table].columns) row[c] = remote[c];
-    if (typeof row.weight === 'string') row.weight = Number(row.weight);
-    if (typeof row.increment === 'string') row.increment = Number(row.increment);
-    if (typeof row.bar_weight === 'string') row.bar_weight = Number(row.bar_weight);
+    const row = cleanRow(table, remote);
+    if (!row) continue;
     row._dirty = false;
     data[table].set(key, row);
     persist(table, row);
@@ -165,9 +167,9 @@ export function mergeRemote(table, rows) {
 export function importRows(table, rows) {
   let n = 0;
   for (const src of rows) {
-    const row = {};
-    for (const c of TABLES[table].columns) if (c !== 'user_id' && src[c] !== undefined) row[c] = src[c];
-    if (!row[TABLES[table].key]) continue;
+    const row = cleanRow(table, src);
+    if (!row) continue;
+    delete row.user_id;
     const local = data[table].get(row[TABLES[table].key]);
     if (local && !local.deleted && Date.parse(local.updated_at) >= Date.parse(row.updated_at || 0)) continue;
     const r = { ...row, deleted: false, updated_at: new Date().toISOString(), _dirty: true };

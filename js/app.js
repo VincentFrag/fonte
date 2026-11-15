@@ -13,7 +13,7 @@ import {
   renderAccount, renderSettings, renderBackup, renderHelp,
 } from './views/more.js';
 
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.6.2';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -503,6 +503,11 @@ ctx.applyLang = () => {
 };
 
 async function start() {
+  // Protection contre l'affichage de l'app dans un cadre d'un autre site (clics piégés)
+  if (window.top !== window.self) {
+    document.body.textContent = 'Fonte ne peut pas s’afficher dans un cadre. / Fonte can’t be displayed in a frame.';
+    return;
+  }
   resetLang();
   applyTheme();
   shell();

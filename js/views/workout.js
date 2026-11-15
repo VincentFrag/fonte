@@ -113,7 +113,7 @@ function renderStart(view, ctx) {
 }
 
 // ---------- Saisie de la séance ----------
-const numStr = (n) => numInput(n);
+const numStr = (n) => esc(numInput(n));
 
 function editor(view, ctx, original, { live }) {
   let w = JSON.parse(JSON.stringify(original));

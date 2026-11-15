@@ -151,6 +151,7 @@ L'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois pa
 ## Sécurité
 
 - **Tes données sont isolées** : des règles de sécurité au niveau des lignes (RLS) garantissent que chaque compte ne lit et n'écrit que ses propres données. Un visiteur non connecté n'a accès à rien.
+- **Les fichiers importés sont contrôlés** : chaque champ d'une sauvegarde (ou reçu du serveur) est vérifié avant d'entrer dans l'app, et une politique de sécurité du contenu (CSP) bloque tout script qui ne vient pas de l'app elle-même. Importe malgré tout uniquement des sauvegardes dont tu connais la provenance : elles s'ajoutent à tes données.
 - **La clé dans `config.js` est faite pour être publique.** La sécurité repose sur les règles RLS, pas sur le secret de cette clé.
 - **Le point sensible, ce sont tes comptes GitHub et Supabase** : protège-les avec un mot de passe unique et la double authentification.
 - **L'administrateur d'un projet voit toutes ses données** depuis le tableau de bord Supabase. Si tu crées des comptes pour d'autres personnes, préviens-les.
@@ -200,6 +201,12 @@ Une idée, un bug, une amélioration ? Tout est expliqué dans [CONTRIBUTING.md]
 - Pour tester en local, ouvrir `index.html` en double-cliquant ne fonctionne pas (les navigateurs bloquent les modules JavaScript en `file://`). Dans le dossier, lance `python3 -m http.server 8000` et ouvre `http://localhost:8000`.
 - Si tu ajoutes une colonne à une table, ajoute-la dans `supabase/schema.sql` **et** dans la liste `columns` de la table dans `js/store.js`.
 
+### Sécurité du code
+
+- Tout texte venant des données (noms, notes…) passe par `esc()` avant d'être inséré dans une page.
+- Toute donnée qui entre dans l'app (import, serveur, stockage local) passe par `js/clean.js`. Si tu ajoutes un champ, ajoute-le aussi là, avec son type.
+- La CSP est dans `index.html`. Elle n'autorise la connexion qu'aux adresses `*.supabase.co` : si ton projet Supabase utilise un domaine personnalisé, ajoute-le dans `connect-src`.
+
 ### Traductions
 
 Le texte français sert de clé : dans le code, `t('Séance')` affiche « Workout » en anglais. Les pluriels passent par `tp(n, 'un', 'plusieurs')`, et les paramètres s'écrivent `{nom}`. Les traductions anglaises sont dans `js/i18n-en.js`. Si une clé manque, l'app affiche le français et ajoute la clé à `window.__i18nMissing` (pratique à vérifier depuis la console du navigateur). Pense aussi à mettre à jour `README.en.md` quand tu modifies ce guide.
@@ -222,6 +229,7 @@ fonte/
 │   ├── i18n.js             Choix de la langue et fonctions de traduction
 │   ├── i18n-en.js          Traductions anglaises
 │   ├── store.js            Stockage local (IndexedDB)
+│   ├── clean.js            Contrôle des données importées ou reçues
 │   ├── sync.js             Synchronisation et connexion Supabase
 │   ├── calc.js             1RM, records, progression, poids de corps, disques
 │   ├── charts.js           Graphiques SVG

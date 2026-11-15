@@ -151,6 +151,7 @@ Supabase's free plan doesn't include automatic backups. Once a month, do **More 
 ## Security
 
 - **Your data is isolated**: row-level security (RLS) rules make sure each account only reads and writes its own data. A visitor who isn't signed in can't access anything.
+- **Imported files are checked**: every field of a backup (or of data received from the server) is validated before it enters the app, and a Content Security Policy (CSP) blocks any script that doesn't come from the app itself. Still, only import backups you trust: they get added to your data.
 - **The key in `config.js` is meant to be public.** Security relies on the RLS rules, not on keeping this key secret.
 - **What matters is your GitHub and Supabase accounts**: protect them with a unique password and two-factor authentication.
 - **A project's administrator can see all its data** from the Supabase dashboard. If you create accounts for other people, tell them.
@@ -200,6 +201,12 @@ An idea, a bug, an improvement? Everything is explained in [CONTRIBUTING.en.md](
 - To test locally, double-clicking `index.html` doesn't work (browsers block JavaScript modules over `file://`). In the folder, run `python3 -m http.server 8000` and open `http://localhost:8000`.
 - If you add a column to a table, add it to `supabase/schema.sql` **and** to that table's `columns` list in `js/store.js`.
 
+### Code security
+
+- Any text coming from data (names, notes…) goes through `esc()` before being inserted into a page.
+- Any data entering the app (import, server, local storage) goes through `js/clean.js`. If you add a field, add it there too, with its type.
+- The CSP is in `index.html`. It only allows connections to `*.supabase.co` addresses: if your Supabase project uses a custom domain, add it to `connect-src`.
+
 ### Translations
 
 The French text is the key: in the code, `t('Séance')` shows "Workout" in English. Plurals use `tp(n, 'one', 'many')`, and parameters are written `{name}`. English translations live in `js/i18n-en.js`. If a key is missing, the app falls back to French and adds the key to `window.__i18nMissing` (handy to check from the browser console).
@@ -221,6 +228,7 @@ fonte/
 │   ├── i18n.js             Language choice and translation functions
 │   ├── i18n-en.js          English translations
 │   ├── store.js            Local storage (IndexedDB)
+│   ├── clean.js            Checks imported or received data
 │   ├── sync.js             Supabase sync and sign-in
 │   ├── calc.js             1RM, PRs, progression, bodyweight, plates
 │   ├── charts.js           SVG charts

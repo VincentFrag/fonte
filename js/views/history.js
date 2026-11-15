@@ -64,7 +64,7 @@ export function renderHistoryDetail(view, ctx, id) {
       const num = s.warmup ? warmLetter : String(++k);
       const rec = records.has(`${item.uid}:${s.uid}`);
       return `<li class="${s.warmup ? 'is-warmup' : ''}"><span class="d-num">${num}</span>
-        <span class="d-set">${esc(txt)}${s.rir != null && mode === 'reps' ? `<small>${t('RIR')} ${s.rir}</small>` : ''}</span>
+        <span class="d-set">${esc(txt)}${s.rir != null && mode === 'reps' ? `<small>${t('RIR')} ${esc(s.rir)}</small>` : ''}</span>
         ${rec ? `<span class="tag record">${t('Record')}</span>` : ''}</li>`;
     }).join('');
     let summary = '';
