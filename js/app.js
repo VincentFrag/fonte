@@ -12,7 +12,7 @@ import {
   renderAccount, renderSettings, renderBackup,
 } from './views/more.js';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -273,18 +273,37 @@ function applyTheme() {
 }
 
 // ---------- Service worker (hors ligne + mises à jour) ----------
+// Une app installée reste ouverte en arrière-plan pendant des jours : le navigateur ne
+// revérifie la version qu'au chargement d'une page. On vérifie donc nous-mêmes à chaque
+// retour au premier plan, puis on applique la mise à jour tout seul si aucune séance
+// n'est en cours ; sinon, on propose de mettre à jour.
+const UPDATED_KEY = 'fonte-updated';
+
+function canUpdateSilently() {
+  if (store.all('workouts').some((w) => !w.ended_at)) return false;
+  if (document.querySelector('.sheet-wrap')) return false;
+  const a = document.activeElement;
+  return !(a && a.matches('input, textarea, select'));
+}
+
 function registerSW() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   let updating = false;
+  const apply = (worker) => {
+    updating = true;
+    try { sessionStorage.setItem(UPDATED_KEY, '1'); } catch {}
+    worker.postMessage('skipWaiting');
+  };
   navigator.serviceWorker.register('./sw.js').then((reg) => {
+    let asked = false;
     const ask = (worker) => {
+      if (canUpdateSilently()) return apply(worker);
+      if (asked) return;
+      asked = true;
       toast('Nouvelle version disponible.', {
         action: 'Mettre à jour',
         duration: 0,
-        onAction: () => {
-          updating = true;
-          worker.postMessage('skipWaiting');
-        },
+        onAction: () => apply(worker),
       });
     };
     if (reg.waiting && navigator.serviceWorker.controller) ask(reg.waiting);
@@ -294,14 +313,37 @@ function registerSW() {
         if (w.state === 'installed' && navigator.serviceWorker.controller) ask(w);
       });
     });
-    setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+
+    let lastCheck = Date.now();
+    const check = () => {
+      if (reg.waiting && navigator.serviceWorker.controller) return ask(reg.waiting);
+      if (Date.now() - lastCheck < 30 * 1000) return;
+      lastCheck = Date.now();
+      reg.update().catch(() => {});
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') check();
+    });
+    window.addEventListener('focus', check);
+    window.addEventListener('online', check);
+    setInterval(() => document.visibilityState === 'visible' && check(), 10 * 60 * 1000);
   }).catch((e) => console.warn('SW', e));
+
   let reloaded = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (reloaded || !updating) return;
     reloaded = true;
     location.reload();
   });
+}
+
+function announceUpdate() {
+  try {
+    if (sessionStorage.getItem(UPDATED_KEY)) {
+      sessionStorage.removeItem(UPDATED_KEY);
+      toast(`Fonte mise à jour (version ${APP_VERSION}).`, { duration: 2500 });
+    }
+  } catch {}
 }
 
 // ---------- Démarrage ----------
@@ -364,6 +406,7 @@ async function start() {
   rest.restore();
   render();
   registerSW();
+  announceUpdate();
   sync.init().catch((e) => console.error(e));
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
 }
