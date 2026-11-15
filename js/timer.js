@@ -4,10 +4,10 @@
 import * as store from './store.js';
 import * as calc from './calc.js';
 import { icon } from './ui.js';
-import { t } from './i18n.js';
+import { t, dn } from './i18n.js';
 
 const isTimed = (it) => calc.itemMode(it, store.getAny('exercises', it.exercise_id)) === 'duree';
-const nameOf = (it) => store.getAny('exercises', it.exercise_id)?.name || it.name || t('Exercice');
+const nameOf = (it) => dn(store.getAny('exercises', it.exercise_id)?.name || it.name) || t('Exercice');
 
 // Construit la suite d'étapes à partir de l'exercice startUid (inclus) jusqu'à la fin de la séance.
 export function buildSteps(w, startUid) {

@@ -73,3 +73,39 @@ export function tv(fr) {
   if (lang() === 'fr' || !fr) return fr;
   return EN[fr] ?? fr;
 }
+
+// ---------- Noms connus (exercices et programmes du catalogue) ----------
+// Les noms sont enregistrés tels quels (souvent en français). À l'affichage, un nom du catalogue
+// est montré dans la langue de l'app ; un nom inventé par l'utilisateur reste inchangé.
+const known = new Map();
+
+export function registerNames(pairs) {
+  for (const [fr, en] of pairs) {
+    if (!fr || !en) continue;
+    const pair = [fr, en];
+    known.set(fr.toLowerCase(), pair);
+    known.set(en.toLowerCase(), pair);
+  }
+}
+
+// Noms français dont la traduction est dans le dictionnaire (noms de séances types…)
+export function registerKnown(frList) {
+  registerNames(frList.map((fr) => [fr, EN[fr]]));
+}
+
+// Nom à afficher. Garde un éventuel suffixe « (2) » ajouté pour éviter un doublon.
+export function dn(name) {
+  if (!name) return name;
+  const m = /^(.*?)(\s\(\d+\))?$/.exec(name);
+  const pair = known.get(m[1].toLowerCase());
+  if (!pair) return name;
+  return (lang() === 'en' ? pair[1] : pair[0]) + (m[2] || '');
+}
+
+// Toutes les écritures possibles d'un nom (pour la recherche et les doublons)
+export function nameVariants(name) {
+  const pair = name ? known.get(name.toLowerCase()) : null;
+  return pair ? pair.map((x) => x.toLowerCase()) : [String(name || '').toLowerCase()];
+}
+
+registerKnown(['Séance libre', 'Séance']);

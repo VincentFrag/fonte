@@ -92,7 +92,7 @@ La pastille en haut à droite indique l'état de la synchro : **Synchronisé**, 
 
 ### Langue
 
-Fonte suit la langue de ton appareil : français si l'appareil est en français, anglais sinon. Pour choisir, va dans **Plus > Réglages > Langue**. Les exercices et programmes déjà créés gardent leur nom ; les nouveaux sont créés dans la langue choisie.
+Fonte suit la langue de ton appareil : français si l'appareil est en français, anglais sinon. Pour choisir, va dans **Plus > Réglages > Langue**. Les exercices et programmes du catalogue (« Développé couché », « Push A »…) s'affichent dans la langue choisie, même ceux déjà créés, sans modifier tes données. Les noms que tu as inventés restent tels quels.
 
 ---
 

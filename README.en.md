@@ -92,7 +92,7 @@ The badge at the top right shows the sync status: **Synced**, **Offline**, **Sig
 
 ### Language
 
-Fonte follows your device's language: French if your device is in French, English otherwise. To choose, go to **More > Settings > Language**. Exercises and programs you already created keep their names; new ones are created in the chosen language.
+Fonte follows your device's language: French if your device is in French, English otherwise. To choose, go to **More > Settings > Language**. Catalog exercises and programs ("Bench press", "Push A"…) show in the chosen language, including ones you already created, without changing your data. Names you made up stay as they are.
 
 ---
 

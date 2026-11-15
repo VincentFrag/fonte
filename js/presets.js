@@ -1,7 +1,7 @@
 // Programmes tout faits. L'ajout crée les séances types et seulement les exercices manquants.
 import * as store from './store.js';
 import * as calc from './calc.js';
-import { t, lang } from './i18n.js';
+import { t, lang, registerNames, registerKnown } from './i18n.js';
 
 // Exercices utilisés par le catalogue : nom français → [groupe musculaire, type, nom anglais]
 const EXERCISES = {
@@ -188,6 +188,9 @@ export const PROGRAMS = [
     ],
   },
 ];
+
+registerNames(Object.entries(EXERCISES).map(([fr, v]) => [fr, v[2]]));
+registerKnown(PROGRAMS.flatMap((p) => p.templates.map((tpl) => tpl.name)));
 
 export function programExercises(p) {
   return [...new Set(p.templates.flatMap((tpl) => tpl.items.map((i) => i.ex)))];

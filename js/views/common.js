@@ -2,10 +2,10 @@
 import * as store from '../store.js';
 import * as calc from '../calc.js';
 import { esc, icon, openSheet, formData, toast } from '../ui.js';
-import { t, tp, lang, numInput } from '../i18n.js';
+import { t, tp, lang, numInput, dn, nameVariants } from '../i18n.js';
 
 export function sortedExercises() {
-  return store.all('exercises').sort((a, b) => a.name.localeCompare(b.name, lang()));
+  return store.all('exercises').sort((a, b) => dn(a.name).localeCompare(dn(b.name), lang()));
 }
 
 function groupByMuscle(list) {
@@ -21,7 +21,7 @@ function groupByMuscle(list) {
 export function exerciseListHtml(list, { attr = 'data-pick' } = {}) {
   return groupByMuscle(list)
     .map(([m, l]) => `<div class="ex-group"><h3 class="group-title">${esc(calc.muscleLabel(m))}</h3>${l
-      .map((ex) => `<button class="list-row" ${attr}="${ex.id}"><span class="list-main">${esc(ex.name)}</span><span class="list-meta">${esc(calc.equipLabel(ex.equipment))}${ex.equipment === 'barre' && ex.bar_weight != null ? ` ${esc(calc.fmt(ex.bar_weight))} kg` : ''}</span></button>`)
+      .map((ex) => `<button class="list-row" ${attr}="${ex.id}"><span class="list-main">${esc(dn(ex.name))}</span><span class="list-meta">${esc(calc.equipLabel(ex.equipment))}${ex.equipment === 'barre' && ex.bar_weight != null ? ` ${esc(calc.fmt(ex.bar_weight))} kg` : ''}</span></button>`)
       .join('')}</div>`)
     .join('');
 }
@@ -40,7 +40,7 @@ export function pickExercise(title = t('Ajouter un exercice')) {
       const draw = () => {
         const term = q.value.trim().toLowerCase();
         const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-        const found = sortedExercises().filter((ex) => !term || norm(ex.name).includes(norm(term)));
+        const found = sortedExercises().filter((ex) => !term || norm(`${ex.name} ${dn(ex.name)}`).includes(norm(term)));
         list.innerHTML = `${found.length ? exerciseListHtml(found) : `<p class="empty">${t('Aucun exercice ne correspond.')}</p>`}
           <button class="btn ghost block" data-create>${icon('add')}<span>${term ? esc(t('Créer « {name} »', { name: q.value.trim() })) : t('Créer un exercice')}</span></button>`;
       };
@@ -65,7 +65,7 @@ export function editExercise(ex, presetName = '') {
   return openSheet({
     title: ex ? t('Modifier l’exercice') : t('Nouvel exercice'),
     body: `<form class="form" data-form>
-      <label class="field"><span>${t('Nom')}</span><input name="name" required maxlength="80" value="${esc(e.name)}" ${ex ? '' : 'autofocus'}></label>
+      <label class="field"><span>${t('Nom')}</span><input name="name" required maxlength="80" value="${esc(dn(e.name))}" ${ex ? '' : 'autofocus'}></label>
       <label class="field"><span>${t('Groupe musculaire')}</span><select name="muscle">
         ${calc.MUSCLES.map((m) => `<option value="${esc(m)}" ${m === e.muscle ? 'selected' : ''}>${esc(calc.muscleLabel(m))}</option>`).join('')}</select></label>
       <label class="field"><span>${t('Type')}</span><select name="equipment" data-equip>
@@ -120,14 +120,16 @@ export function editExercise(ex, presetName = '') {
             el.querySelector('[name=video_url]').focus();
             return false;
           }
-          const dup = store.all('exercises').find((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== e.id);
+          const variants = new Set(nameVariants(name));
+          const dup = store.all('exercises').find((x) => x.id !== e.id && nameVariants(x.name).some((v) => variants.has(v)));
           if (dup) {
-            toast(t('« {name} » existe déjà.', { name: dup.name }));
+            toast(t('« {name} » existe déjà.', { name: dn(dup.name) }));
             return false;
           }
           return store.save('exercises', {
             ...(ex || { id: store.uuid() }),
-            name,
+            // Nom inchangé : on garde le nom enregistré (évite de renommer un exercice du catalogue en changeant de langue)
+            name: ex && name === dn(ex.name) ? ex.name : name,
             muscle: f.muscle,
             equipment: f.equipment,
             increment: calc.parseNum(f.increment) ?? calc.defaultIncrement(f.equipment),
@@ -160,7 +162,7 @@ export function workoutRowHtml(w) {
   const d = new Date(w.started_at);
   return `<a class="hist-row" href="#/historique/${w.id}">
     <span class="hist-date"><span class="hist-daynum">${d.getDate()}</span><span class="hist-wd">${esc(calc.fmtWeekday(d).replace('.', ''))}</span></span>
-    <span class="hist-body"><span class="hist-name">${esc(w.name || t('Séance'))}</span>
+    <span class="hist-body"><span class="hist-name">${esc(dn(w.name) || t('Séance'))}</span>
       <span class="hist-meta">${calc.fmtDuration(st.duration)}, ${tp(st.sets, '{n} série', '{n} séries')}${st.tonnage ? `, ${calc.fmtTonnage(st.tonnage)}` : ''}${st.dist ? `, ${calc.fmt1(st.dist)} km` : ''}</span></span>
     ${rec ? `<span class="tag record">${tp(rec, '{n} record', '{n} records')}</span>` : ''}
     ${icon('chevron', 'row-chevron')}
@@ -199,7 +201,7 @@ export function videoSheet(ex) {
   const canPaste = Boolean(navigator.clipboard?.readText);
   return openSheet({
     title: t('Ma vidéo de référence'),
-    body: `<p class="sheet-text first">${esc(ex.name)}</p>
+    body: `<p class="sheet-text first">${esc(dn(ex.name))}</p>
       <ol class="steps">
         <li>${t('Sur YouTube, ouvre la vidéo ou le short qui te sert de modèle.')}</li>
         <li>${t('Touche <strong>Partager</strong>, puis <strong>Copier le lien</strong>.')}</li>

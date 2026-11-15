@@ -4,7 +4,7 @@ import * as calc from '../calc.js';
 import { esc, icon, menuSheet, confirmSheet, toast } from '../ui.js';
 import { workoutRowHtml, setText } from './common.js';
 import { textSheet } from './workout.js';
-import { t, tp } from '../i18n.js';
+import { t, tp, dn } from '../i18n.js';
 
 export function renderHistory(view, ctx) {
   const list = [...calc.finishedWorkouts()].reverse();
@@ -40,7 +40,7 @@ export function renderHistoryDetail(view, ctx, id) {
 
   const items = (w.items || []).map((item) => {
     const ex = store.getAny('exercises', item.exercise_id);
-    const name = ex?.name || item.name || t('Exercice supprimé');
+    const name = dn(ex?.name || item.name) || t('Exercice supprimé');
     const mode = calc.itemMode(item, ex);
     let best = null;
     let k = 0;
@@ -80,7 +80,7 @@ export function renderHistoryDetail(view, ctx, id) {
 
   const fig = (value, label, cls = '') => `<div class="figure ${cls}"><span class="fig-value">${value}</span><span class="fig-label">${label}</span></div>`;
   view.innerHTML = `
-    ${ctx.pageHead(w.name || t('Séance'), {
+    ${ctx.pageHead(dn(w.name) || t('Séance'), {
       back: '/historique',
       sub: `${esc(calc.fmtDate(w.started_at))}, ${esc(calc.fmtTime(w.started_at))}`,
       actions: `<button class="icon-btn" data-menu aria-label="${esc(t('Options de la séance'))}">${icon('more')}</button>
@@ -99,7 +99,7 @@ export function renderHistoryDetail(view, ctx, id) {
 
   view.addEventListener('click', async (e) => {
     if (!e.target.closest('[data-menu]')) return;
-    const c = await menuSheet(w.name || t('Séance'), [
+    const c = await menuSheet(dn(w.name) || t('Séance'), [
       { label: t('Créer un programme à partir de cette séance'), value: 'tpl' },
       { label: t('Supprimer la séance'), value: 'del', danger: true, icon: 'trash' },
     ]);
@@ -111,7 +111,7 @@ export function renderHistoryDetail(view, ctx, id) {
       }
     } else if (c === 'tpl') {
       const free = ['Séance libre', 'Free workout'];
-      const name = await textSheet(t('Nom du programme'), w.name && !free.includes(w.name) ? w.name : '');
+      const name = await textSheet(t('Nom du programme'), w.name && !free.includes(w.name) ? dn(w.name) : '');
       if (!name || !name.trim()) return;
       const tpl = store.save('templates', {
         id: store.uuid(),

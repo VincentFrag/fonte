@@ -6,7 +6,7 @@ import { esc, icon, toast, confirmSheet, menuSheet, formData, openSheet } from '
 import { sortedExercises, exerciseListHtml, editExercise, pickExercise, addBaseExercises, videoSheet } from './common.js';
 import { startWorkout, activeWorkout } from './workout.js';
 import * as presets from '../presets.js';
-import { t, tp, lang, numInput } from '../i18n.js';
+import { t, tp, lang, numInput, dn } from '../i18n.js';
 
 export function renderMore(view, ctx) {
   const nEx = store.all('exercises').length;
@@ -73,7 +73,7 @@ export function renderExercises(view, ctx) {
     const b = e.target.closest('[data-edit]');
     if (b) {
       const ex = store.get('exercises', b.dataset.edit);
-      const c = await menuSheet(ex.name, [
+      const c = await menuSheet(dn(ex.name), [
         { label: t('Modifier'), value: 'edit', icon: 'edit' },
         { label: t('Voir la progression'), value: 'prog' },
         { label: calc.validVideoUrl(ex.video_url) ? t('Voir ma vidéo de référence') : t('Voir la technique'), value: 'video', icon: 'play' },
@@ -92,8 +92,8 @@ export function renderExercises(view, ctx) {
       } else if (c === 'del') {
         const used = calc.exerciseHistory(ex.id).length;
         const ok = await confirmSheet(t('Supprimer l’exercice'), used
-          ? tp(used, '« {name} » apparaît dans {n} séance. L’historique est conservé, mais l’exercice ne sera plus proposé.', '« {name} » apparaît dans {n} séances. L’historique est conservé, mais l’exercice ne sera plus proposé.', { name: ex.name })
-          : t('Supprimer « {name} » ?', { name: ex.name }), { ok: t('Supprimer'), danger: true });
+          ? tp(used, '« {name} » apparaît dans {n} séance. L’historique est conservé, mais l’exercice ne sera plus proposé.', '« {name} » apparaît dans {n} séances. L’historique est conservé, mais l’exercice ne sera plus proposé.', { name: dn(ex.name) })
+          : t('Supprimer « {name} » ?', { name: dn(ex.name) }), { ok: t('Supprimer'), danger: true });
         if (ok) {
           store.remove('exercises', ex.id);
           draw();
@@ -106,14 +106,14 @@ export function renderExercises(view, ctx) {
 
 // ---------- Programmes ----------
 export function renderTemplates(view, ctx) {
-  const list = store.all('templates').sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name, lang()));
+  const list = store.all('templates').sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || dn(a.name).localeCompare(dn(b.name), lang()));
   view.innerHTML = `
     ${ctx.pageHead(t('Programmes'), { back: '/plus', actions: `<button class="btn primary small" data-new>${icon('add')}<span>${t('Nouveau')}</span></button>` })}
     <p class="block-sub">${t('Un programme est une séance type : la liste des exercices, le nombre de séries, la fourchette de répétitions et le repos. Quand tu atteins le haut de la fourchette sur toutes les séries, l’app te propose la charge suivante.')}</p>
     <button class="btn block catalog-btn" data-catalog>${icon('add')}<span>${t('Ajouter un programme tout fait')}</span></button>
     ${list.length ? `<div class="list">${list.map((tpl) => {
-      const names = (tpl.items || []).map((it) => store.getAny('exercises', it.exercise_id)?.name).filter(Boolean);
-      return `<a class="list-row" href="#/programmes/${tpl.id}"><span class="list-main">${esc(tpl.name)}<small>${esc(names.join(', ') || t('Aucun exercice'))}</small></span>${icon('chevron', 'row-chevron')}</a>`;
+      const names = (tpl.items || []).map((it) => dn(store.getAny('exercises', it.exercise_id)?.name)).filter(Boolean);
+      return `<a class="list-row" href="#/programmes/${tpl.id}"><span class="list-main">${esc(dn(tpl.name))}<small>${esc(names.join(', ') || t('Aucun exercice'))}</small></span>${icon('chevron', 'row-chevron')}</a>`;
     }).join('')}</div>` : `<p class="empty">${t('Aucun programme. Crée par exemple « Haut du corps » ou « Push A ».')}</p>`}`;
   view.addEventListener('click', async (e) => {
     if (e.target.closest('[data-catalog]')) {
@@ -191,7 +191,7 @@ export function renderTemplateEdit(view, ctx, id) {
   const draw = () => {
     view.innerHTML = `
       ${ctx.pageHead(t('Programme'), { back: '/programmes', actions: `<button class="icon-btn" data-menu aria-label="${esc(t('Options du programme'))}">${icon('more')}</button>` })}
-      <label class="field big"><span>${t('Nom')}</span><input data-name maxlength="80" value="${esc(tpl.name)}"></label>
+      <label class="field big"><span>${t('Nom')}</span><input data-name maxlength="80" value="${esc(dn(tpl.name))}"></label>
       <div class="tpl-items">
         ${tpl.items.map((it, i) => {
           const ex = store.getAny('exercises', it.exercise_id);
@@ -213,9 +213,9 @@ export function renderTemplateEdit(view, ctx, id) {
               + field('rest_sec', 'Repos (s)', 'Repos en secondes');
           }
           return `<div class="tpl-row" data-i="${i}">
-            <span class="tpl-ex">${esc(ex?.name || t('Exercice supprimé'))}${it.circuit ? ` <span class="tag">${t('Circuit')}</span>` : ''}</span>
+            <span class="tpl-ex">${esc(dn(ex?.name) || t('Exercice supprimé'))}${it.circuit ? ` <span class="tag">${t('Circuit')}</span>` : ''}</span>
             ${fields}
-            <button class="icon-btn" data-row-menu aria-label="${esc(ex ? t('Options pour {name}', { name: ex.name }) : t('Options pour cet exercice'))}">${icon('more')}</button>
+            <button class="icon-btn" data-row-menu aria-label="${esc(ex ? t('Options pour {name}', { name: dn(ex.name) }) : t('Options pour cet exercice'))}">${icon('more')}</button>
           </div>`;
         }).join('')}
       </div>
@@ -263,7 +263,7 @@ export function renderTemplateEdit(view, ctx, id) {
         items.push({ label: tpl.items[i].circuit ? t('Retirer du circuit') : t('Enchaîner en circuit avec les voisins'), value: 'circuit' });
       }
       items.push({ label: t('Retirer du programme'), value: 'del', danger: true, icon: 'trash' });
-      const c = await menuSheet(store.getAny('exercises', tpl.items[i].exercise_id)?.name || t('Exercice'), items);
+      const c = await menuSheet(dn(store.getAny('exercises', tpl.items[i].exercise_id)?.name) || t('Exercice'), items);
       if (c === 'circuit') {
         tpl.items[i].circuit = !tpl.items[i].circuit;
         if (tpl.items[i].circuit && tpl.items[i].int_rest == null) tpl.items[i].int_rest = 15;
@@ -292,16 +292,16 @@ export function renderTemplateEdit(view, ctx, id) {
       return;
     }
     if (e.target.closest('[data-menu]')) {
-      const c = await menuSheet(tpl.name, [
+      const c = await menuSheet(dn(tpl.name), [
         { label: t('Dupliquer'), value: 'dup' },
         { label: t('Supprimer le programme'), value: 'del', danger: true, icon: 'trash' },
       ]);
       if (c === 'dup') {
         if (dirty) save();
-        const copy = store.save('templates', { ...tpl, id: store.uuid(), name: t('{name} (copie)', { name: tpl.name }), position: store.all('templates').length });
+        const copy = store.save('templates', { ...tpl, id: store.uuid(), name: t('{name} (copie)', { name: dn(tpl.name) }), position: store.all('templates').length });
         ctx.go(`/programmes/${copy.id}`);
       } else if (c === 'del') {
-        if (await confirmSheet(t('Supprimer le programme'), t('Supprimer « {name} » ? Tes séances passées sont conservées.', { name: tpl.name }), { ok: t('Supprimer'), danger: true })) {
+        if (await confirmSheet(t('Supprimer le programme'), t('Supprimer « {name} » ? Tes séances passées sont conservées.', { name: dn(tpl.name) }), { ok: t('Supprimer'), danger: true })) {
           store.remove('templates', tpl.id);
           ctx.go('/programmes');
         }
@@ -453,7 +453,7 @@ export function renderSettings(view, ctx) {
         ${opt('fr', s.lang, 'Français')}
         ${opt('en', s.lang, 'English')}
       </select>
-        <small>${t('Les noms d’exercices et de programmes déjà créés ne changent pas. Les nouveaux sont créés dans la langue choisie.')}</small></label>
+        <small>${t('Les exercices et programmes du catalogue s’affichent dans la langue choisie, même ceux déjà créés. Les noms que tu as inventés restent tels quels.')}</small></label>
       <h2 class="block-title">${t('Séance')}</h2>
       <label class="field"><span>${t('Repos par défaut (secondes)')}</span><input name="rest" inputmode="numeric" value="${s.rest}"></label>
       <label class="switch"><input type="checkbox" name="showRir" ${s.showRir ? 'checked' : ''}><span>${t('Afficher la colonne RIR')}<small>${t('Répétitions en réserve : combien de reps tu aurais encore pu faire. 0 = échec.')}</small></span></label>
@@ -566,7 +566,7 @@ export function renderBackup(view, ctx) {
             const e1 = s.warmup ? null : calc.e1rm(load, s.r);
             const n = (v) => (v == null ? '' : numInput(Math.round(v * 100) / 100));
             const mode = calc.itemMode(it, ex);
-            rows.push([day, w.name, ex?.name || it.name, ex?.muscle || '', i + 1, s.warmup ? t('oui') : t('non'),
+            rows.push([day, dn(w.name), dn(ex?.name || it.name), ex?.muscle || '', i + 1, s.warmup ? t('oui') : t('non'),
               mode === 'reps' ? n(s.w) : '', mode === 'reps' ? s.r : '', mode === 'reps' ? s.rir ?? '' : '',
               mode === 'reps' ? n(load) : '', mode === 'reps' ? n(e1) : '', s.t ?? '', n(s.d)]);
           });

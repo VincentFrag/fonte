@@ -5,7 +5,7 @@ import * as sync from '../sync.js';
 import { esc, icon, openSheet, confirmSheet, menuSheet, toast, debounce, formData } from '../ui.js';
 import { pickExercise, platesHtml, workoutRowHtml, videoSheet } from './common.js';
 import { runIntervals } from '../timer.js';
-import { t, tp, lang, numInput } from '../i18n.js';
+import { t, tp, lang, numInput, dn } from '../i18n.js';
 
 export function activeWorkout() {
   return store.all('workouts')
@@ -57,7 +57,7 @@ export function startWorkout(ctx, templateId) {
 // ---------- Choix de la séance ----------
 function renderStart(view, ctx) {
   const templates = store.all('templates')
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name, lang()));
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || dn(a.name).localeCompare(dn(b.name), lang()));
   const exercises = store.all('exercises');
   const done = calc.finishedWorkouts();
   const week = calc.weekSummary();
@@ -79,10 +79,10 @@ function renderStart(view, ctx) {
       <h2 class="block-title">${t('Démarrer une séance')}</h2>
       <div class="tpl-grid">
         ${templates.map((tpl) => {
-          const names = (tpl.items || []).map((it) => store.getAny('exercises', it.exercise_id)?.name).filter(Boolean);
+          const names = (tpl.items || []).map((it) => dn(store.getAny('exercises', it.exercise_id)?.name)).filter(Boolean);
           const lw = lastFor(tpl.id);
           return `<button class="tpl" data-start="${tpl.id}">
-            <span class="tpl-name">${esc(tpl.name)}</span>
+            <span class="tpl-name">${esc(dn(tpl.name))}</span>
             <span class="tpl-list">${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? `, +${names.length - 4}` : ''}</span>
             <span class="tpl-last">${lw ? esc(t('Dernière fois {when}', { when: calc.relDays(lw.started_at) })) : t('Jamais faite')}</span>
           </button>`;
@@ -167,7 +167,7 @@ function editor(view, ctx, original, { live }) {
 
   function itemHtml(item, idx) {
     const ex = store.getAny('exercises', item.exercise_id);
-    const name = ex?.name || item.name || t('Exercice supprimé');
+    const name = dn(ex?.name || item.name) || t('Exercice supprimé');
     const mode = calc.itemMode(item, ex);
     const base = item.base || calc.defaultBase(ex);
     const pdc = mode === 'reps' && base.kind === 'pdc';
@@ -261,7 +261,7 @@ function editor(view, ctx, original, { live }) {
     if (st.tonnage) summary.push(t('{v} soulevés', { v: calc.fmtTonnage(st.tonnage) }));
     if (st.time) summary.push(t('{v} d’effort', { v: calc.fmtSec(st.time) }));
     view.innerHTML = `
-      ${ctx.pageHead(w.name || t('Séance'), {
+      ${ctx.pageHead(dn(w.name) || t('Séance'), {
         back: live ? null : `/historique/${w.id}`,
         sub: sub(),
         actions: `<button class="icon-btn" data-wmenu aria-label="${esc(t('Options de la séance'))}">${icon('more')}</button>
@@ -364,7 +364,7 @@ function editor(view, ctx, original, { live }) {
     if (el.closest('[data-base]')) {
       const item = findItem(el);
       const ex = store.getAny('exercises', item.exercise_id);
-      const v = await baseSheet(ex?.name || item.name, item.base || calc.defaultBase(ex));
+      const v = await baseSheet(dn(ex?.name || item.name), item.base || calc.defaultBase(ex));
       if (!v) return;
       item.base = v;
       // La barre choisie devient la barre par défaut de l'exercice pour les prochaines fois
@@ -413,7 +413,7 @@ function editor(view, ctx, original, { live }) {
       const exo = store.get('exercises', item.exercise_id);
       if (exo) items.push({ label: calc.validVideoUrl(exo.video_url) ? t('Changer ma vidéo de référence') : t('Ajouter ma vidéo de référence'), value: 'video', icon: 'play' });
       items.push({ label: t('Retirer de la séance'), value: 'remove', danger: true, icon: 'trash' });
-      const name = store.getAny('exercises', item.exercise_id)?.name || item.name;
+      const name = dn(store.getAny('exercises', item.exercise_id)?.name || item.name);
       const c = await menuSheet(name, items);
       if (c === 'up' || c === 'down') {
         const j = c === 'up' ? idx - 1 : idx + 1;
@@ -459,7 +459,7 @@ function editor(view, ctx, original, { live }) {
     }
 
     if (el.closest('[data-wmenu]')) {
-      const c = await menuSheet(w.name || t('Séance'), [
+      const c = await menuSheet(dn(w.name) || t('Séance'), [
         { label: t('Renommer'), value: 'rename', icon: 'edit' },
         { label: w.notes ? t('Modifier la note') : t('Ajouter une note'), value: 'notes' },
         { label: t('Date et durée'), value: 'date' },
@@ -467,7 +467,7 @@ function editor(view, ctx, original, { live }) {
       ]);
       if (c === 'rename' || c === 'notes') {
         const field = c === 'rename' ? 'name' : 'notes';
-        const v = await textSheet(c === 'rename' ? t('Nom de la séance') : t('Note de séance'), w[field] || '', field === 'notes');
+        const v = await textSheet(c === 'rename' ? t('Nom de la séance') : t('Note de séance'), (field === 'name' ? dn(w.name) : w[field]) || '', field === 'notes');
         if (v !== null) {
           w[field] = v.trim() || (field === 'name' ? t('Séance') : '');
           rerender();

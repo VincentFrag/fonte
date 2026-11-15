@@ -4,7 +4,7 @@ import * as calc from '../calc.js';
 import { esc, icon } from '../ui.js';
 import { lineChart, barList, columnChart } from '../charts.js';
 import { setText } from './common.js';
-import { t, tp } from '../i18n.js';
+import { t, tp, dn } from '../i18n.js';
 
 const RANGES = [
   ['3m', '3 mois', 91],
@@ -62,7 +62,7 @@ export function renderProgress(view, ctx) {
         <h2 class="block-title">${t('Exercices')}</h2>
         ${exercises.length ? `<div class="list">${exercises.map(({ ex, b }) => `
           <a class="list-row" href="#/progres/${ex.id}">
-            <span class="list-main">${esc(ex.name)}<small>${esc(tp(b.sessions, '{n} séance, dernière {when}', '{n} séances, dernière {when}', { when: calc.relDays(b.last) }))}</small></span>
+            <span class="list-main">${esc(dn(ex.name))}<small>${esc(tp(b.sessions, '{n} séance, dernière {when}', '{n} séances, dernière {when}', { when: calc.relDays(b.last) }))}</small></span>
             <span class="list-value">${b.mode === 'duree'
               ? `${b.maxT ? esc(calc.fmtSec(b.maxT.value)) : '–'}<small>${t('durée max')}</small>`
               : b.mode === 'cardio'
@@ -177,7 +177,7 @@ export function renderExerciseProgress(view, ctx, id) {
     const totalVal = (h) => (mode === 'reps' ? calc.fmtTonnage(h.tonnage) : mode === 'duree' ? calc.fmtSec(h.totalT) : `${calc.fmt1(h.dist)} km`);
 
     view.innerHTML = `
-      ${ctx.pageHead(ex.name, { back: '/progres', sub: esc([ex.muscle && calc.muscleLabel(ex.muscle), calc.EQUIPMENT[ex.equipment] && calc.equipLabel(ex.equipment)].filter(Boolean).join(', ')) })}
+      ${ctx.pageHead(dn(ex.name), { back: '/progres', sub: esc([ex.muscle && calc.muscleLabel(ex.muscle), calc.EQUIPMENT[ex.equipment] && calc.equipLabel(ex.equipment)].filter(Boolean).join(', ')) })}
       ${figures()}
       <section class="block">
         <div class="chart-controls">

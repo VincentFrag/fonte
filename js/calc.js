@@ -1,6 +1,6 @@
 // Calculs : formats, 1RM estimé, records, progression, poids de corps, disques.
 import * as store from './store.js';
-import { t, tv, lang, locale } from './i18n.js';
+import { t, tv, lang, locale, dn, registerNames } from './i18n.js';
 
 // ---------- Réglages (par appareil) ----------
 const SETTINGS_KEY = 'fonte-settings';
@@ -173,6 +173,7 @@ export const BASE_EXERCISES = [
   ['Crunch à la poulie', 'Abdos', 'poulie', 'Cable crunch'],
 ];
 export const baseName = (row) => (lang() === 'en' ? row[3] : row[0]);
+registerNames(BASE_EXERCISES.map((r) => [r[0], r[3]]));
 
 export function defaultIncrement(equipment) {
   return { barre: 2.5, halteres: 2, machine: 5, poulie: 2.5, pdc: 2.5 }[equipment] ?? 2.5;
@@ -588,7 +589,7 @@ export function extractUrl(text) {
 export function techniqueUrl(ex, fallbackName = '') {
   const own = validVideoUrl(ex?.video_url);
   if (own) return own;
-  const name = ex?.name || fallbackName;
+  const name = dn(ex?.name || fallbackName);
   const q = lang() === 'en' ? `${name} exercise technique` : `${name} technique exécution`;
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 }

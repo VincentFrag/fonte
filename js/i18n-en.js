@@ -259,7 +259,7 @@ export default {
   "Langue": "Language",
   "Langue de l’app": "App language",
   "Comme l’appareil": "Same as device",
-  "Les noms d’exercices et de programmes déjà créés ne changent pas. Les nouveaux sont créés dans la langue choisie.": "Names of exercises and programs you already created don’t change. New ones are created in the chosen language.",
+  "Les exercices et programmes du catalogue s’affichent dans la langue choisie, même ceux déjà créés. Les noms que tu as inventés restent tels quels.": "Catalog exercises and programs show in the chosen language, including ones you already created. Names you made up stay as they are.",
   "Repos par défaut (secondes)": "Default rest (seconds)",
   "Afficher la colonne RIR": "Show the RIR column",
   "Répétitions en réserve : combien de reps tu aurais encore pu faire. 0 = échec.": "Reps in reserve: how many more reps you could have done. 0 = failure.",
