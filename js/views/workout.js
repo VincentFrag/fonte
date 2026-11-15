@@ -144,8 +144,9 @@ function editor(view, ctx, original, { live }) {
   function itemHtml(item, idx) {
     const ex = store.getAny('exercises', item.exercise_id);
     const name = ex?.name || item.name || 'Exercice supprimé';
-    const pdc = ex?.equipment === 'pdc';
-    const barbell = ex?.equipment === 'barre';
+    const base = item.base || calc.defaultBase(ex);
+    const pdc = base.kind === 'pdc';
+    const barbell = base.kind === 'bar';
     const last = calc.lastSession(item.exercise_id, { excludeWorkout: w.id, before: w.started_at });
     const records = calc.recordsIn(w);
     let target = '';
@@ -160,7 +161,7 @@ function editor(view, ctx, original, { live }) {
     const rows = item.sets.map((st) => {
       const prev = !st.warmup && last ? last.sets[k] : null;
       const num = st.warmup ? 'É' : String(++k);
-      const prevTxt = prev ? `${pdc ? (prev.w ? `+${calc.fmt(prev.w)}` : 'PDC') : calc.fmt(prev.w)} × ${prev.r}` : '–';
+      const prevTxt = prev ? `${prev.pdc ? (prev.w ? `+${calc.fmt(prev.w)}` : 'PDC') : calc.fmt(prev.w)} × ${prev.r}` : '–';
       const isRec = records.has(`${item.uid}:${st.uid}`);
       return `<div class="set ${st.done ? 'is-done' : ''} ${st.warmup ? 'is-warmup' : ''} ${isRec ? 'is-record' : ''}" data-set="${st.uid}">
         <button class="set-num" data-set-menu aria-label="Options de la série ${esc(num)}">${num}</button>
@@ -175,14 +176,15 @@ function editor(view, ctx, original, { live }) {
     return `<section class="ex" data-item="${item.uid}">
       <header class="ex-head">
         <div class="ex-titles">
-          <h2 class="ex-name">${esc(name)}</h2>
+          <h2 class="ex-name"><button class="ex-name-btn" data-base aria-label="${esc(name)} : changer la charge de départ (actuellement ${esc(calc.baseLabel(base))})">${esc(name)}</button></h2>
+          <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(calc.baseLabel(base))}${icon('down')}</button>
           <p class="ex-meta">${esc(target)}</p>
         </div>
         <button class="icon-btn" data-item-menu aria-label="Options de l'exercice ${esc(name)}">${icon('more')}</button>
       </header>
       ${item.progressed && !item.sets.some((x) => x.done) ? `<p class="ex-hint">Toutes tes séries ont atteint ${item.rep_max} reps la dernière fois : charge augmentée de ${esc(calc.fmt(item.progressed))} kg.</p>` : ''}
       ${ex?.notes ? `<p class="ex-notes">${esc(ex.notes)}</p>` : ''}
-      ${barbell ? `<div class="plates" data-plates>${platesHtml(nextWeight(item), ex)}</div>` : ''}
+      ${barbell ? `<div class="plates" data-plates>${platesHtml(nextWeight(item), ex, base)}</div>` : ''}
       <div class="sets ${s.showRir ? 'with-rir' : ''}">
         <div class="set-head" aria-hidden="true"><span>Série</span><span>Précédent</span><span>${pdc ? 'Lest' : 'kg'}</span><span>Reps</span>${s.showRir ? '<span>RIR</span>' : ''}<span></span></div>
         ${rows}
@@ -225,7 +227,7 @@ function editor(view, ctx, original, { live }) {
     set[inp.dataset.field] = inp.dataset.field === 'w' ? v : v == null ? null : Math.max(0, Math.round(v));
     if (inp.dataset.field === 'w') {
       const p = inp.closest('[data-item]').querySelector('[data-plates]');
-      if (p) p.innerHTML = platesHtml(nextWeight(item), store.getAny('exercises', item.exercise_id));
+      if (p) p.innerHTML = platesHtml(nextWeight(item), store.getAny('exercises', item.exercise_id), item.base);
     }
     pending = true;
     saveSoon();
@@ -275,6 +277,20 @@ function editor(view, ctx, original, { live }) {
         set.at = null;
         rerender();
       }
+      return;
+    }
+
+    if (t.closest('[data-base]')) {
+      const item = findItem(t);
+      const ex = store.getAny('exercises', item.exercise_id);
+      const v = await baseSheet(ex?.name || item.name, item.base || calc.defaultBase(ex));
+      if (!v) return;
+      item.base = v;
+      // La barre choisie devient la barre par défaut de l'exercice pour les prochaines fois
+      if (v.kind === 'bar' && ex && !ex.deleted && ex.bar_weight !== v.weight) {
+        store.save('exercises', { ...ex, bar_weight: v.weight }, { silent: true });
+      }
+      rerender();
       return;
     }
 
@@ -437,6 +453,37 @@ function editor(view, ctx, original, { live }) {
 }
 
 // ---------- Petites feuilles de saisie ----------
+function baseSheet(name, current) {
+  const same = (a, b) => a.kind === b.kind && (a.kind !== 'bar' || a.weight === b.weight);
+  const options = [
+    ...calc.BAR_PRESETS.map(([, wt, long]) => ({ value: { kind: 'bar', weight: wt }, label: long, detail: `${calc.fmt(wt)} kg` })),
+    { value: { kind: 'pdc' }, label: 'Poids du corps', detail: 'tu saisis le lest' },
+    { value: { kind: 'none' }, label: 'Sans barre', detail: 'haltères, machine, poulie' },
+  ];
+  const customOn = current.kind === 'bar' && !calc.BAR_PRESETS.some(([, wt]) => wt === current.weight);
+  return openSheet({
+    title: name,
+    body: `<p class="sheet-text first">Charge de départ pour cet exercice</p>
+      <div class="menu-list">${options.map((o, i) => `<button class="menu-item ${same(o.value, current) ? 'is-on' : ''}" data-opt="${i}">
+        <span class="mi-main">${esc(o.label)}</span><span class="mi-detail">${esc(o.detail)}</span>${same(o.value, current) ? icon('check') : ''}</button>`).join('')}</div>
+      <form class="custom-bar" data-custom>
+        <label class="field"><span>Autre barre (kg)</span>
+          <span class="inline-input"><input name="bar" inputmode="decimal" value="${customOn ? numStr(current.weight) : ''}" placeholder="ex. 12,5"><button class="btn" type="submit">Utiliser</button></span></label>
+      </form>`,
+    onMount(el, api) {
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-opt]');
+        if (b) api.close(options[Number(b.dataset.opt)].value);
+      });
+      el.querySelector('[data-custom]').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const v = calc.parseNum(formData(el).bar);
+        if (v != null && v >= 0) api.close({ kind: 'bar', weight: v });
+      });
+    },
+  });
+}
+
 function restSheet(current) {
   const presets = [60, 90, 120, 150, 180, 240];
   return openSheet({

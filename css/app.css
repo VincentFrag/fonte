@@ -344,6 +344,26 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .ex-titles { flex: 1; min-width: 0; }
 .ex-name { font-stretch: var(--narrow); font-weight: 800; font-size: 25px; line-height: 1.08; }
 .ex-meta { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.ex-name-btn {
+  border: 0; background: none; padding: 0; margin: 0; text-align: left;
+  font: inherit; color: inherit; letter-spacing: inherit; cursor: pointer;
+}
+.base-chip {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;
+  min-height: 30px; padding: 0 8px 0 10px; border-radius: 15px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font-size: 13px; font-weight: 600;
+}
+.base-chip .icon { width: 15px; height: 15px; color: var(--ink-3); }
+.sheet-text.first { margin: 0 0 6px; }
+.menu-item .mi-main { flex: 1; }
+.menu-item .mi-detail { color: var(--ink-3); font-size: 14px; font-weight: 400; }
+.menu-item.is-on { background: var(--accent-soft); }
+.menu-item.is-on .icon { color: var(--accent); }
+.custom-bar { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.inline-input { display: flex; gap: 8px; }
+.inline-input input { flex: 1; min-width: 0; }
+.inline-input .btn { min-height: 46px; }
 .ex-hint {
   margin-top: 10px; padding: 8px 12px; border-radius: 10px;
   background: var(--accent-soft); font-size: 14px;

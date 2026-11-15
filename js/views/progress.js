@@ -93,7 +93,7 @@ export function renderExerciseProgress(view, ctx, id) {
   }
   const hist = calc.exerciseHistory(id);
   const b = calc.bests(id);
-  const pdc = ex.equipment === 'pdc';
+  const pdc = hist.some((h) => h.sets.some((s) => s.pdc));
 
   const draw = () => {
     const range = RANGES.find((r) => r[0] === prefs.range) || RANGES[1];
@@ -126,7 +126,7 @@ export function renderExerciseProgress(view, ctx, id) {
           <thead><tr><th scope="col">Date</th><th scope="col">Séries</th><th scope="col" class="num">1RM est.</th><th scope="col" class="num">Volume</th></tr></thead>
           <tbody>${[...hist].reverse().map((h) => `<tr>
             <td><a href="#/historique/${h.workoutId}">${esc(calc.fmtDay(h.date))}</a></td>
-            <td>${h.sets.map((s) => esc(setText(ex, s.w, s.r).replace(' kg', ''))).join('<br>')}</td>
+            <td>${h.sets.map((s) => esc(setText(ex, s.w, s.r, h.base).replace(' kg', ''))).join('<br>')}</td>
             <td class="num">${h.bestE1rm ? esc(calc.fmt1(h.bestE1rm)) : '–'}</td>
             <td class="num">${esc(calc.fmtTonnage(h.tonnage))}</td></tr>`).join('')}</tbody>
         </table></div>` : '<p class="empty">Aucune séance terminée avec cet exercice.</p>'}

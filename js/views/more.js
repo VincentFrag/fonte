@@ -401,7 +401,7 @@ export function renderBackup(view, ctx) {
           const ex = store.getAny('exercises', it.exercise_id);
           it.sets.forEach((s, i) => {
             if (!s.done) return;
-            const load = calc.effectiveLoad(ex, s.w, day);
+            const load = calc.effectiveLoad(ex, s.w, day, it.base);
             const e1 = s.warmup ? null : calc.e1rm(load, s.r);
             const n = (v) => (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ','));
             rows.push([day, w.name, ex?.name || it.name, ex?.muscle || '', i + 1, s.warmup ? 'oui' : 'non', n(s.w), s.r, s.rir ?? '', n(load), n(e1)]);

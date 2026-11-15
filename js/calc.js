@@ -197,13 +197,14 @@ function index() {
       const sets = (item.sets || [])
         .filter((s) => s.done && !s.warmup && s.r > 0)
         .map((s) => {
-          const load = effectiveLoad(ex, s.w, day);
-          return { w: s.w, r: s.r, rir: s.rir, load, e1rm: e1rm(load, s.r) };
+          const load = effectiveLoad(ex, s.w, day, item.base);
+          return { w: s.w, r: s.r, rir: s.rir, load, e1rm: e1rm(load, s.r), pdc: isPdc(ex, item.base) };
         });
       if (!sets.length) continue;
       const entry = {
         workoutId: w.id,
         date: w.started_at,
+        base: item.base || null,
         sets,
         bestE1rm: Math.max(...sets.map((s) => s.e1rm || 0)) || null,
         maxLoad: Math.max(...sets.map((s) => s.load || 0)) || null,
@@ -236,9 +237,31 @@ export function latestBodyweight() {
   return list.length ? list[list.length - 1] : null;
 }
 
+// Charge de départ d'un exercice dans une séance :
+//   { kind: 'bar', weight } : barre (on saisit la charge totale, barre comprise)
+//   { kind: 'pdc' }         : poids du corps (on saisit le lest)
+//   { kind: 'none' }        : haltères, machine, poulie…
+// Les séances antérieures à la v1.2 n'ont pas de base : on se réfère au matériel de l'exercice.
+export function defaultBase(ex) {
+  if (ex?.equipment === 'pdc') return { kind: 'pdc' };
+  if (ex?.equipment === 'barre') return { kind: 'bar', weight: barWeightOf(ex) };
+  return { kind: 'none' };
+}
+
+export function isPdc(ex, base) {
+  return base ? base.kind === 'pdc' : ex?.equipment === 'pdc';
+}
+
+export function baseLabel(base) {
+  if (!base || base.kind === 'none') return 'Sans barre';
+  if (base.kind === 'pdc') return 'Poids du corps';
+  const preset = BAR_PRESETS.find(([, w]) => w === base.weight);
+  return preset ? `${preset[2]} ${fmt(base.weight)} kg` : `Barre ${fmt(base.weight)} kg`;
+}
+
 // Charge réelle : pour un exercice au poids du corps, poids du corps + lest.
-export function effectiveLoad(ex, w, day) {
-  if (ex?.equipment === 'pdc') {
+export function effectiveLoad(ex, w, day, base = null) {
+  if (isPdc(ex, base)) {
     const bw = bodyweightAt(day || localDay());
     if (bw == null) return w || null;
     return bw + (w || 0);
@@ -281,7 +304,7 @@ export function recordsIn(workout) {
     const ex = store.getAny('exercises', item.exercise_id);
     for (const s of item.sets || []) {
       if (!s.done || s.warmup || !(s.r > 0)) continue;
-      const v = e1rm(effectiveLoad(ex, s.w, day), s.r);
+      const v = e1rm(effectiveLoad(ex, s.w, day, item.base), s.r);
       if (v && v > best + 0.01) {
         out.add(`${item.uid}:${s.uid}`);
         best = v;
@@ -323,6 +346,7 @@ export function buildItem(exercise, tItem, uidFn) {
     rep_max: repMax,
     target_sets: tItem?.sets ?? null,
     progressed: progressed ? inc : 0,
+    base: last?.base || defaultBase(exercise),
     sets,
   };
 }
@@ -336,7 +360,7 @@ export function workoutStats(w) {
     for (const s of item.sets || []) {
       if (!s.done || s.warmup || !(s.r > 0)) continue;
       sets++;
-      tonnage += (effectiveLoad(ex, s.w, day) || 0) * s.r;
+      tonnage += (effectiveLoad(ex, s.w, day, item.base) || 0) * s.r;
     }
   }
   const end = w.ended_at ? Date.parse(w.ended_at) : Date.now();
@@ -434,12 +458,13 @@ export function barWeightOf(ex) {
   return ex?.bar_weight ?? settings().bar;
 }
 
+// [nom court, poids, nom complet]
 export const BAR_PRESETS = [
-  ['Olympique', 20],
-  ['Femme', 15],
-  ['EZ', 10],
-  ['Trap bar', 25],
-  ['Courte', 7],
+  ['Olympique', 20, 'Barre olympique'],
+  ['Femme', 15, 'Barre femme'],
+  ['EZ', 10, 'Barre EZ'],
+  ['Trap bar', 25, 'Trap bar'],
+  ['Courte', 7, 'Barre courte'],
 ];
 
 export function platesFor(total, bar, available) {

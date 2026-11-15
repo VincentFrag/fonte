@@ -42,13 +42,13 @@ export function renderHistoryDetail(view, ctx, id) {
     let best = null;
     let k = 0;
     const rows = item.sets.map((s) => {
-      const load = calc.effectiveLoad(ex, s.w, day);
+      const load = calc.effectiveLoad(ex, s.w, day, item.base);
       const e = !s.warmup && s.done ? calc.e1rm(load, s.r) : null;
       if (e && (!best || e > best)) best = e;
       const num = s.warmup ? 'É' : String(++k);
       const rec = records.has(`${item.uid}:${s.uid}`);
       return `<li class="${s.warmup ? 'is-warmup' : ''}"><span class="d-num">${num}</span>
-        <span class="d-set">${esc(setText(ex, s.w, s.r))}${s.rir != null ? `<small>RIR ${s.rir}</small>` : ''}</span>
+        <span class="d-set">${esc(setText(ex, s.w, s.r, item.base))}${s.rir != null ? `<small>RIR ${s.rir}</small>` : ''}</span>
         ${rec ? '<span class="tag record">Record</span>' : ''}</li>`;
     }).join('');
     return `<section class="d-ex">

@@ -156,15 +156,15 @@ export function workoutRowHtml(w) {
   </a>`;
 }
 
-export function setText(ex, w, r) {
-  const load = ex?.equipment === 'pdc' ? (w ? `PDC + ${calc.fmt(w)} kg` : 'PDC') : `${calc.fmt(w)} kg`;
+export function setText(ex, w, r, base = null) {
+  const load = calc.isPdc(ex, base) ? (w ? `PDC + ${calc.fmt(w)} kg` : 'PDC') : `${calc.fmt(w)} kg`;
   return `${load} × ${r ?? '–'}`;
 }
 
 // Disques à charger de chaque côté de la barre
-export function platesHtml(total, ex) {
+export function platesHtml(total, ex, base = null) {
   const s = calc.settings();
-  const bar = calc.barWeightOf(ex);
+  const bar = base?.kind === 'bar' ? base.weight : calc.barWeightOf(ex);
   const res = calc.platesFor(total, bar, s.plates);
   if (total == null) return '';
   if (!res) return `<span class="plates-text">Moins que la barre (${calc.fmt(bar)} kg)</span>`;
