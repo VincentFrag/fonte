@@ -1,4 +1,5 @@
 // Petits outils d'interface : échappement HTML, feuilles modales, confirmations, notifications.
+import { t } from './i18n.js';
 
 export function esc(v) {
   return String(v ?? '')
@@ -50,7 +51,7 @@ export function openSheet({ title, body, actions = [], onMount, wide = false }) 
       <div class="sheet ${wide ? 'sheet-wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
         <header class="sheet-head">
           <h2 id="sheet-title">${esc(title)}</h2>
-          <button class="icon-btn" data-close aria-label="Fermer">${icon('close')}</button>
+          <button class="icon-btn" data-close aria-label="${esc(t('Fermer'))}">${icon('close')}</button>
         </header>
         <div class="sheet-body">${body || ''}</div>
         ${actions.length ? `<footer class="sheet-actions">${actions
@@ -95,12 +96,12 @@ export function openSheet({ title, body, actions = [], onMount, wide = false }) 
   });
 }
 
-export function confirmSheet(title, message, { ok = 'Confirmer', danger = false } = {}) {
+export function confirmSheet(title, message, { ok = t('Confirmer'), danger = false } = {}) {
   return openSheet({
     title,
     body: `<p class="sheet-text">${esc(message)}</p>`,
     actions: [
-      { label: 'Annuler', value: false },
+      { label: t('Annuler'), value: false },
       { label: ok, kind: danger ? 'danger' : 'primary', value: true },
     ],
   }).then(Boolean);

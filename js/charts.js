@@ -1,5 +1,6 @@
 // Graphiques SVG légers, sans dépendance. Ligne avec réticule + info-bulle, colonnes.
 import { esc } from './ui.js';
+import { t, locale } from './i18n.js';
 
 function niceTicks(min, max, count = 4) {
   if (min === max) {
@@ -19,13 +20,13 @@ function niceTicks(min, max, count = 4) {
   return { lo, hi, ticks };
 }
 
-const dfTick = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+const dfTick = { format: (d) => new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'short' }).format(d) };
 
 /**
  * series: [{ name, points: [{t, y}], style: 'line' | 'dots' | 'line+dots', cls }]
  * La première série « line » sert à l'étiquette directe de la dernière valeur.
  */
-export function lineChart(el, { series, yFormat = (v) => v, height = 220, empty = 'Pas encore de données.' }) {
+export function lineChart(el, { series, yFormat = (v) => v, height = 220, empty = t('Pas encore de données.') }) {
   const all = series.flatMap((s) => s.points);
   if (all.length < 1) {
     el.innerHTML = `<p class="chart-empty">${esc(empty)}</p>`;
@@ -112,7 +113,7 @@ export function lineChart(el, { series, yFormat = (v) => v, height = 220, empty 
         return p ? `<div class="tip-row"><span class="key ${s.cls || ''}"></span>${esc(s.name)} <b>${esc(yFormat(p.y))}</b>${p.note ? `<small>${esc(p.note)}</small>` : ''}</div>` : '';
       })
       .join('');
-    tip.innerHTML = `<div class="tip-date">${esc(new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(best)))}</div>${rows}`;
+    tip.innerHTML = `<div class="tip-date">${esc(new Intl.DateTimeFormat(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(best)))}</div>${rows}`;
     tip.hidden = false;
     const left = (cx / width) * r.width;
     tip.style.left = `${Math.min(Math.max(left, 70), r.width - 70)}px`;
@@ -142,7 +143,7 @@ export function columnChart(el, data, { height = 120, format = (v) => v } = {}) 
 }
 
 // Barres horizontales étiquetées (une série)
-export function barList(el, data, { format = (v) => v, empty = 'Rien sur la période.' } = {}) {
+export function barList(el, data, { format = (v) => v, empty = t('Rien sur la période.') } = {}) {
   if (!data.length) {
     el.innerHTML = `<p class="chart-empty">${esc(empty)}</p>`;
     return;

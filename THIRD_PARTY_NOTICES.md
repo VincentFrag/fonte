@@ -1,6 +1,8 @@
-# Composants tiers
+# Composants tiers / Third-party components
 
 Fonte intègre les composants suivants, distribués sous leur propre licence. Ces licences s'appliquent à ces composants uniquement ; le reste du projet est sous la licence du fichier `LICENSE`.
+
+*Fonte includes the following components, each distributed under its own license. These licenses apply to those components only; the rest of the project is under the license in the `LICENSE` file.*
 
 ## supabase-js
 

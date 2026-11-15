@@ -3,6 +3,7 @@ import * as store from './store.js';
 import * as sync from './sync.js';
 import * as calc from './calc.js';
 import { esc, icon, $, toast } from './ui.js';
+import { t, tp, resetLang } from './i18n.js';
 import { renderSeance, renderWorkoutEdit } from './views/workout.js';
 import { renderHistory, renderHistoryDetail } from './views/history.js';
 import { renderProgress, renderExerciseProgress } from './views/progress.js';
@@ -12,7 +13,7 @@ import {
   renderAccount, renderSettings, renderBackup, renderHelp,
 } from './views/more.js';
 
-const APP_VERSION = '1.5.1';
+const APP_VERSION = '1.6.0';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -64,12 +65,12 @@ export const ctx = {
 function syncLabel(s) {
   const pending = store.pendingCount();
   switch (s.status) {
-    case 'local': return ['is-local', 'Sur cet appareil'];
-    case 'signedout': return ['is-warn', 'Non connecté'];
-    case 'syncing': return ['is-busy', 'Synchro…'];
-    case 'offline': return ['is-warn', pending ? `Hors ligne, ${pending} en attente` : 'Hors ligne'];
-    case 'error': return ['is-error', 'Erreur de synchro'];
-    default: return ['is-ok', pending ? `${pending} en attente` : 'Synchronisé'];
+    case 'local': return ['is-local', t('Sur cet appareil')];
+    case 'signedout': return ['is-warn', t('Non connecté')];
+    case 'syncing': return ['is-busy', t('Synchro…')];
+    case 'offline': return ['is-warn', pending ? t('Hors ligne, {n} en attente', { n: pending }) : t('Hors ligne')];
+    case 'error': return ['is-error', t('Erreur de synchro')];
+    default: return ['is-ok', pending ? t('{n} en attente', { n: pending }) : t('Synchronisé')];
   }
 }
 
@@ -80,7 +81,7 @@ function syncPill() {
 
 function pageHead(title, { back = null, actions = '', sub = '' } = {}) {
   return `<header class="page-head">
-    ${back ? `<a class="icon-btn back" href="#${back}" aria-label="Retour">${icon('back')}</a>` : ''}
+    ${back ? `<a class="icon-btn back" href="#${back}" aria-label="${esc(t('Retour'))}">${icon('back')}</a>` : ''}
     <div class="page-title"><h1>${esc(title)}</h1>${sub ? `<p class="page-sub">${sub}</p>` : ''}</div>
     <div class="head-actions">${actions}${syncPill()}</div>
   </header>`;
@@ -130,7 +131,7 @@ function render() {
     match.fn(view, ctx, ...match.params);
   } catch (e) {
     console.error(e);
-    view.innerHTML = `${pageHead('Erreur')}<p class="empty">Cet écran n'a pas pu s'afficher : ${esc(e.message)}</p>`;
+    view.innerHTML = `${pageHead(t('Erreur'))}<p class="empty">${esc(t('Cet écran n’a pas pu s’afficher : {msg}', { msg: e.message }))}</p>`;
   }
   if (!samePage) window.scrollTo(0, 0);
 }
@@ -244,7 +245,7 @@ const rest = {
         bar.classList.add('is-over');
         beep();
         if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-        $('.rest-time', bar).textContent = 'Repos terminé';
+        $('.rest-time', bar).textContent = t('Repos terminé');
         setTimeout(() => {
           if (this.state && this.state.endsAt <= Date.now()) this.stop();
         }, 6000);
@@ -405,8 +406,8 @@ function registerSW() {
       if (canUpdateSilently()) return apply(worker);
       if (asked) return;
       asked = true;
-      toast('Nouvelle version disponible.', {
-        action: 'Mettre à jour',
+      toast(t('Nouvelle version disponible.'), {
+        action: t('Mettre à jour'),
         duration: 0,
         onAction: () => apply(worker),
       });
@@ -429,8 +430,8 @@ function registerSW() {
         if (reg.waiting) ask(reg.waiting);
         else if (!asked) {
           asked = true;
-          toast('Nouvelle version disponible.', {
-            action: 'Mettre à jour',
+          toast(t('Nouvelle version disponible.'), {
+            action: t('Mettre à jour'),
             duration: 0,
             onAction: () => ctx.checkUpdate(),
           });
@@ -459,18 +460,18 @@ function announceUpdate() {
   try {
     if (sessionStorage.getItem(UPDATED_KEY)) {
       sessionStorage.removeItem(UPDATED_KEY);
-      toast(`Fonte mise à jour (version ${APP_VERSION}).`, { duration: 2500 });
+      toast(t('Fonte mise à jour (version {v}).', { v: APP_VERSION }), { duration: 2500 });
     }
   } catch {}
 }
 
 // ---------- Démarrage ----------
 function shell() {
-  const nav = NAV.map(([id, label]) => `<a href="#/${id}" data-nav="${id}">${icon(id)}<span>${label}</span></a>`).join('');
+  const nav = NAV.map(([id, label]) => `<a href="#/${id}" data-nav="${id}">${icon(id)}<span>${t(label)}</span></a>`).join('');
   document.body.innerHTML = `
-    <a class="skip" href="#main">Aller au contenu</a>
+    <a class="skip" href="#main">${t('Aller au contenu')}</a>
     <div class="app">
-      <nav class="nav" aria-label="Navigation principale">
+      <nav class="nav" aria-label="${t('Navigation principale')}">
         <div class="brand" aria-hidden="true"><span class="brand-mark"></span>Fonte</div>
         ${nav}
       </nav>
@@ -478,11 +479,11 @@ function shell() {
     </div>
     <div id="rest-bar" class="rest-bar" hidden>
       <div class="rest-progress"></div>
-      <span class="rest-label">Repos</span>
+      <span class="rest-label">${t('Repos')}</span>
       <span class="rest-time" aria-live="off">0:00</span>
-      <button class="rest-btn" data-rest="-15" aria-label="Retirer 15 secondes">−15</button>
-      <button class="rest-btn" data-rest="15" aria-label="Ajouter 15 secondes">+15</button>
-      <button class="rest-btn rest-skip" data-rest="stop">Passer</button>
+      <button class="rest-btn" data-rest="-15" aria-label="${t('Retirer 15 secondes')}">−15</button>
+      <button class="rest-btn" data-rest="15" aria-label="${t('Ajouter 15 secondes')}">+15</button>
+      <button class="rest-btn rest-skip" data-rest="stop">${t('Passer')}</button>
     </div>`;
   $('#rest-bar').addEventListener('click', (e) => {
     const b = e.target.closest('[data-rest]');
@@ -492,13 +493,23 @@ function shell() {
   });
 }
 
+// Changement de langue : on reconstruit toute l'interface
+ctx.applyLang = () => {
+  resetLang();
+  const keepRest = rest.state;
+  shell();
+  if (keepRest) rest.loop();
+  render();
+};
+
 async function start() {
+  resetLang();
   applyTheme();
   shell();
   try {
     await store.load();
   } catch (e) {
-    $('#main').innerHTML = `<div class="view"><p class="empty">Le stockage local est indisponible (${esc(e.message)}). Vérifie que la navigation privée est désactivée.</p></div>`;
+    $('#main').innerHTML = `<div class="view"><p class="empty">${esc(t('Le stockage local est indisponible ({msg}). Vérifie que la navigation privée est désactivée.', { msg: e.message }))}</p></div>`;
     return;
   }
   window.addEventListener('hashchange', render);

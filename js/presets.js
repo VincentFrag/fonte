@@ -1,56 +1,57 @@
 // Programmes tout faits. L'ajout crée les séances types et seulement les exercices manquants.
 import * as store from './store.js';
 import * as calc from './calc.js';
+import { t, lang } from './i18n.js';
 
-// Exercices utilisés par le catalogue : nom → [groupe musculaire, type]
+// Exercices utilisés par le catalogue : nom français → [groupe musculaire, type, nom anglais]
 const EXERCISES = {
-  'Développé couché': ['Pectoraux', 'barre'],
-  'Développé incliné haltères': ['Pectoraux', 'halteres'],
-  'Écarté à la poulie': ['Pectoraux', 'poulie'],
-  'Dips': ['Pectoraux', 'pdc'],
-  'Pompes': ['Pectoraux', 'pdc'],
-  'Tractions': ['Dos', 'pdc'],
-  'Rowing barre': ['Dos', 'barre'],
-  'Rowing haltère': ['Dos', 'halteres'],
-  'Rowing inversé': ['Dos', 'pdc'],
-  'Tirage vertical': ['Dos', 'poulie'],
-  'Tirage horizontal': ['Dos', 'poulie'],
-  'Soulevé de terre': ['Dos', 'barre'],
-  'Développé militaire': ['Épaules', 'barre'],
-  'Développé militaire haltères': ['Épaules', 'halteres'],
-  'Élévations latérales': ['Épaules', 'halteres'],
-  'Oiseau haltères': ['Épaules', 'halteres'],
-  'Face pull': ['Épaules', 'poulie'],
-  'Curl barre': ['Biceps', 'barre'],
-  'Curl marteau': ['Biceps', 'halteres'],
-  'Extension triceps à la poulie': ['Triceps', 'poulie'],
-  'Barre au front': ['Triceps', 'barre'],
-  'Squat': ['Quadriceps', 'barre'],
-  'Presse à cuisses': ['Quadriceps', 'machine'],
-  'Leg extension': ['Quadriceps', 'machine'],
-  'Fentes haltères': ['Quadriceps', 'halteres'],
-  'Squat bulgare': ['Quadriceps', 'pdc'],
-  'Fentes au poids du corps': ['Quadriceps', 'pdc'],
-  'Soulevé de terre jambes tendues': ['Ischios', 'barre'],
-  'Leg curl': ['Ischios', 'machine'],
-  'Hip thrust': ['Fessiers', 'barre'],
-  'Pont fessier': ['Fessiers', 'pdc'],
-  'Mollets debout': ['Mollets', 'machine'],
-  'Crunch à la poulie': ['Abdos', 'poulie'],
-  'Relevés de jambes': ['Abdos', 'pdc'],
-  'Planche': ['Abdos', 'duree'],
-  'Planche latérale': ['Abdos', 'duree'],
-  'Hollow hold': ['Abdos', 'duree'],
-  'Burpees': ['Corps entier', 'duree'],
-  'Mountain climbers': ['Corps entier', 'duree'],
-  'Jumping jacks': ['Corps entier', 'duree'],
-  'Montées de genoux': ['Corps entier', 'duree'],
-  'Squats sautés': ['Quadriceps', 'duree'],
-  'Fentes sautées': ['Quadriceps', 'duree'],
-  'Course à pied': ['Cardio', 'cardio'],
-  'Vélo': ['Cardio', 'cardio'],
-  'Rameur': ['Cardio', 'cardio'],
-  'Elliptique': ['Cardio', 'cardio'],
+  'Développé couché': ['Pectoraux', 'barre', 'Bench press'],
+  'Développé incliné haltères': ['Pectoraux', 'halteres', 'Incline dumbbell press'],
+  'Écarté à la poulie': ['Pectoraux', 'poulie', 'Cable fly'],
+  'Dips': ['Pectoraux', 'pdc', 'Dips'],
+  'Pompes': ['Pectoraux', 'pdc', 'Push-ups'],
+  'Tractions': ['Dos', 'pdc', 'Pull-ups'],
+  'Rowing barre': ['Dos', 'barre', 'Barbell row'],
+  'Rowing haltère': ['Dos', 'halteres', 'One-arm dumbbell row'],
+  'Rowing inversé': ['Dos', 'pdc', 'Inverted row'],
+  'Tirage vertical': ['Dos', 'poulie', 'Lat pulldown'],
+  'Tirage horizontal': ['Dos', 'poulie', 'Seated cable row'],
+  'Soulevé de terre': ['Dos', 'barre', 'Deadlift'],
+  'Développé militaire': ['Épaules', 'barre', 'Overhead press'],
+  'Développé militaire haltères': ['Épaules', 'halteres', 'Dumbbell shoulder press'],
+  'Élévations latérales': ['Épaules', 'halteres', 'Lateral raise'],
+  'Oiseau haltères': ['Épaules', 'halteres', 'Rear delt fly'],
+  'Face pull': ['Épaules', 'poulie', 'Face pull'],
+  'Curl barre': ['Biceps', 'barre', 'Barbell curl'],
+  'Curl marteau': ['Biceps', 'halteres', 'Hammer curl'],
+  'Extension triceps à la poulie': ['Triceps', 'poulie', 'Triceps pushdown'],
+  'Barre au front': ['Triceps', 'barre', 'Skull crusher'],
+  'Squat': ['Quadriceps', 'barre', 'Squat'],
+  'Presse à cuisses': ['Quadriceps', 'machine', 'Leg press'],
+  'Leg extension': ['Quadriceps', 'machine', 'Leg extension'],
+  'Fentes haltères': ['Quadriceps', 'halteres', 'Dumbbell lunge'],
+  'Squat bulgare': ['Quadriceps', 'pdc', 'Bulgarian split squat'],
+  'Fentes au poids du corps': ['Quadriceps', 'pdc', 'Bodyweight lunge'],
+  'Soulevé de terre jambes tendues': ['Ischios', 'barre', 'Romanian deadlift'],
+  'Leg curl': ['Ischios', 'machine', 'Leg curl'],
+  'Hip thrust': ['Fessiers', 'barre', 'Hip thrust'],
+  'Pont fessier': ['Fessiers', 'pdc', 'Glute bridge'],
+  'Mollets debout': ['Mollets', 'machine', 'Standing calf raise'],
+  'Crunch à la poulie': ['Abdos', 'poulie', 'Cable crunch'],
+  'Relevés de jambes': ['Abdos', 'pdc', 'Leg raises'],
+  'Planche': ['Abdos', 'duree', 'Plank'],
+  'Planche latérale': ['Abdos', 'duree', 'Side plank'],
+  'Hollow hold': ['Abdos', 'duree', 'Hollow hold'],
+  'Burpees': ['Corps entier', 'duree', 'Burpees'],
+  'Mountain climbers': ['Corps entier', 'duree', 'Mountain climbers'],
+  'Jumping jacks': ['Corps entier', 'duree', 'Jumping jacks'],
+  'Montées de genoux': ['Corps entier', 'duree', 'High knees'],
+  'Squats sautés': ['Quadriceps', 'duree', 'Jump squats'],
+  'Fentes sautées': ['Quadriceps', 'duree', 'Jump lunges'],
+  'Course à pied': ['Cardio', 'cardio', 'Running'],
+  'Vélo': ['Cardio', 'cardio', 'Cycling'],
+  'Rameur': ['Cardio', 'cardio', 'Rowing machine'],
+  'Elliptique': ['Cardio', 'cardio', 'Elliptical'],
 };
 
 // Raccourcis d'écriture
@@ -189,12 +190,20 @@ export const PROGRAMS = [
 ];
 
 export function programExercises(p) {
-  return [...new Set(p.templates.flatMap((t) => t.items.map((i) => i.ex)))];
+  return [...new Set(p.templates.flatMap((tpl) => tpl.items.map((i) => i.ex)))];
 }
 
-function findExercise(name) {
-  const n = name.toLowerCase();
-  return store.all('exercises').find((e) => e.name.toLowerCase() === n) || null;
+// Nom d'un exercice du catalogue dans la langue de l'app
+export function exLabel(fr) {
+  return lang() === 'en' ? EXERCISES[fr]?.[2] || fr : fr;
+}
+
+// Cherche l'exercice chez l'utilisateur, sous son nom français ou anglais
+function findExercise(fr) {
+  const names = new Set([fr, EXERCISES[fr]?.[2]].filter(Boolean).map((n) => n.toLowerCase()));
+  const list = store.all('exercises');
+  return list.find((e) => e.name.toLowerCase() === exLabel(fr).toLowerCase())
+    || list.find((e) => names.has(e.name.toLowerCase())) || null;
 }
 
 // Exercices du programme qui n'existent pas encore chez l'utilisateur
@@ -204,31 +213,32 @@ export function missingExercises(p) {
 
 export function addProgram(p) {
   const ids = {};
-  for (const name of programExercises(p)) {
-    let ex = findExercise(name);
+  for (const fr of programExercises(p)) {
+    let ex = findExercise(fr);
     if (!ex) {
-      const [muscle, equipment] = EXERCISES[name] || ['Autre', 'autre'];
+      const [muscle, equipment] = EXERCISES[fr] || ['Autre', 'autre'];
       ex = store.save('exercises', {
-        id: store.uuid(), name, muscle, equipment,
+        id: store.uuid(), name: exLabel(fr), muscle, equipment,
         increment: ['duree', 'cardio'].includes(equipment) ? null : calc.defaultIncrement(equipment),
         notes: '',
       });
     }
-    ids[name] = ex.id;
+    ids[fr] = ex.id;
   }
-  const names = new Set(store.all('templates').map((t) => t.name.toLowerCase()));
+  const names = new Set(store.all('templates').map((x) => x.name.toLowerCase()));
   let position = store.all('templates').length;
   const created = [];
-  for (const t of p.templates) {
-    let name = t.name;
-    for (let k = 2; names.has(name.toLowerCase()); k++) name = `${t.name} (${k})`;
+  for (const tpl of p.templates) {
+    const base = t(tpl.name);
+    let name = base;
+    for (let k = 2; names.has(name.toLowerCase()); k++) name = `${base} (${k})`;
     names.add(name.toLowerCase());
     created.push(store.save('templates', {
       id: store.uuid(),
       name,
       position: position++,
       notes: '',
-      items: t.items.map(({ ex, ...rest }) => ({ exercise_id: ids[ex], ...rest })),
+      items: tpl.items.map(({ ex, ...rest }) => ({ exercise_id: ids[ex], ...rest })),
     }));
   }
   return created;

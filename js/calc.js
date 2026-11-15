@@ -1,5 +1,6 @@
 // Calculs : formats, 1RM estimé, records, progression, poids de corps, disques.
 import * as store from './store.js';
+import { t, tv, lang, locale } from './i18n.js';
 
 // ---------- Réglages (par appareil) ----------
 const SETTINGS_KEY = 'fonte-settings';
@@ -11,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   wakeLock: true,
   sound: true,
   theme: 'auto',
+  lang: 'auto',
 };
 
 export function settings() {
@@ -27,26 +29,29 @@ export function saveSettings(patch) {
   return s;
 }
 
-// ---------- Formats ----------
-const nf = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
-const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
-const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+// ---------- Formats (selon la langue de l'app) ----------
+const fmtCache = new Map();
+function nfmt(opts) {
+  const key = `${locale()}|${JSON.stringify(opts)}`;
+  if (!fmtCache.has(key)) fmtCache.set(key, opts.weekday || opts.month || opts.hour || opts.day ? new Intl.DateTimeFormat(locale(), opts) : new Intl.NumberFormat(locale(), opts));
+  return fmtCache.get(key);
+}
 
-export const fmt = (n) => (n == null || Number.isNaN(n) ? '–' : nf.format(n));
-export const fmt1 = (n) => (n == null || Number.isNaN(n) ? '–' : nf1.format(n));
-export const fmt0 = (n) => (n == null || Number.isNaN(n) ? '–' : nf0.format(n));
+export const fmt = (n) => (n == null || Number.isNaN(n) ? '–' : nfmt({ maximumFractionDigits: 2 }).format(n));
+export const fmt1 = (n) => (n == null || Number.isNaN(n) ? '–' : nfmt({ maximumFractionDigits: 1 }).format(n));
+export const fmt0 = (n) => (n == null || Number.isNaN(n) ? '–' : nfmt({ maximumFractionDigits: 0 }).format(n));
 
 export function fmtSigned(n, digits = 1) {
   if (n == null || Number.isNaN(n)) return '–';
-  const s = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(Math.abs(n));
+  const s = nfmt({ maximumFractionDigits: digits, minimumFractionDigits: digits }).format(Math.abs(n));
   if (Math.abs(n) < 0.5 * 10 ** -digits) return s;
   return (n > 0 ? '+' : '−') + s;
 }
 
 export function fmtTonnage(kg) {
   if (kg == null) return '–';
-  if (kg >= 10000) return `${nf1.format(kg / 1000)} t`;
-  return `${nf0.format(kg)} kg`;
+  if (kg >= 10000) return `${fmt1(kg / 1000)} t`;
+  return `${fmt0(kg)} kg`;
 }
 
 export function parseNum(v) {
@@ -57,19 +62,14 @@ export function parseNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-const dfDay = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-const dfFull = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-const dfShort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
-const dfMonth = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
-const dfTime = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
-
-export const fmtDay = (d) => dfDay.format(new Date(d));
-const dfDate = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-export const fmtDate = (d) => dfDate.format(new Date(d));
-export const fmtFull = (d) => dfFull.format(new Date(d));
-export const fmtShort = (d) => dfShort.format(new Date(d));
-export const fmtMonth = (d) => dfMonth.format(new Date(d));
-export const fmtTime = (d) => dfTime.format(new Date(d));
+const date = (opts) => (d) => nfmt(opts).format(new Date(d));
+export const fmtDay = date({ weekday: 'short', day: 'numeric', month: 'short' });
+export const fmtDate = date({ day: 'numeric', month: 'short', year: 'numeric' });
+export const fmtFull = date({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+export const fmtShort = date({ day: 'numeric', month: 'short' });
+export const fmtMonth = date({ month: 'long', year: 'numeric' });
+export const fmtTime = date({ hour: '2-digit', minute: '2-digit' });
+export const fmtWeekday = date({ weekday: 'short' });
 
 export function fmtDuration(ms) {
   if (ms == null || ms < 0) return '–';
@@ -93,12 +93,12 @@ export function fmtRest(sec) {
 
 export function relDays(d) {
   const days = Math.floor((startOfDay(new Date()) - startOfDay(new Date(d))) / 86400000);
-  if (days <= 0) return "aujourd'hui";
-  if (days === 1) return 'hier';
-  if (days < 7) return `il y a ${days} jours`;
-  if (days < 14) return 'il y a une semaine';
-  if (days < 31) return `il y a ${Math.floor(days / 7)} semaines`;
-  return `le ${fmtShort(d)}`;
+  if (days <= 0) return t("aujourd'hui");
+  if (days === 1) return t('hier');
+  if (days < 7) return t('il y a {n} jours', { n: days });
+  if (days < 14) return t('il y a une semaine');
+  if (days < 31) return t('il y a {n} semaines', { n: Math.floor(days / 7) });
+  return t('le {date}', { date: fmtShort(d) });
 }
 
 export function startOfDay(d) {
@@ -125,10 +125,13 @@ export function dayToDate(day) {
 }
 
 // ---------- Listes de référence ----------
+// Les groupes musculaires sont enregistrés en français (clé stable entre appareils),
+// et traduits à l'affichage avec muscleLabel().
 export const MUSCLES = [
   'Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps', 'Avant-bras',
   'Quadriceps', 'Ischios', 'Fessiers', 'Mollets', 'Abdos', 'Corps entier', 'Cardio', 'Autre',
 ];
+export const muscleLabel = (m) => tv(m);
 
 export const EQUIPMENT = {
   barre: 'Barre',
@@ -140,33 +143,36 @@ export const EQUIPMENT = {
   duree: 'Durée (gainage, HIIT)',
   cardio: 'Cardio (durée et distance)',
 };
+export const equipLabel = (k) => (EQUIPMENT[k] ? t(EQUIPMENT[k]) : '');
 
+// [nom français, groupe, type, nom anglais]
 export const BASE_EXERCISES = [
-  ['Développé couché', 'Pectoraux', 'barre'],
-  ['Développé incliné haltères', 'Pectoraux', 'halteres'],
-  ['Écarté à la poulie', 'Pectoraux', 'poulie'],
-  ['Dips', 'Pectoraux', 'pdc'],
-  ['Tractions', 'Dos', 'pdc'],
-  ['Rowing barre', 'Dos', 'barre'],
-  ['Tirage vertical', 'Dos', 'poulie'],
-  ['Tirage horizontal', 'Dos', 'poulie'],
-  ['Soulevé de terre', 'Dos', 'barre'],
-  ['Développé militaire', 'Épaules', 'barre'],
-  ['Élévations latérales', 'Épaules', 'halteres'],
-  ['Face pull', 'Épaules', 'poulie'],
-  ['Curl barre', 'Biceps', 'barre'],
-  ['Curl marteau', 'Biceps', 'halteres'],
-  ['Extension triceps à la poulie', 'Triceps', 'poulie'],
-  ['Barre au front', 'Triceps', 'barre'],
-  ['Squat', 'Quadriceps', 'barre'],
-  ['Presse à cuisses', 'Quadriceps', 'machine'],
-  ['Fentes haltères', 'Quadriceps', 'halteres'],
-  ['Soulevé de terre jambes tendues', 'Ischios', 'barre'],
-  ['Leg curl', 'Ischios', 'machine'],
-  ['Hip thrust', 'Fessiers', 'barre'],
-  ['Mollets debout', 'Mollets', 'machine'],
-  ['Crunch à la poulie', 'Abdos', 'poulie'],
+  ['Développé couché', 'Pectoraux', 'barre', 'Bench press'],
+  ['Développé incliné haltères', 'Pectoraux', 'halteres', 'Incline dumbbell press'],
+  ['Écarté à la poulie', 'Pectoraux', 'poulie', 'Cable fly'],
+  ['Dips', 'Pectoraux', 'pdc', 'Dips'],
+  ['Tractions', 'Dos', 'pdc', 'Pull-ups'],
+  ['Rowing barre', 'Dos', 'barre', 'Barbell row'],
+  ['Tirage vertical', 'Dos', 'poulie', 'Lat pulldown'],
+  ['Tirage horizontal', 'Dos', 'poulie', 'Seated cable row'],
+  ['Soulevé de terre', 'Dos', 'barre', 'Deadlift'],
+  ['Développé militaire', 'Épaules', 'barre', 'Overhead press'],
+  ['Élévations latérales', 'Épaules', 'halteres', 'Lateral raise'],
+  ['Face pull', 'Épaules', 'poulie', 'Face pull'],
+  ['Curl barre', 'Biceps', 'barre', 'Barbell curl'],
+  ['Curl marteau', 'Biceps', 'halteres', 'Hammer curl'],
+  ['Extension triceps à la poulie', 'Triceps', 'poulie', 'Triceps pushdown'],
+  ['Barre au front', 'Triceps', 'barre', 'Skull crusher'],
+  ['Squat', 'Quadriceps', 'barre', 'Squat'],
+  ['Presse à cuisses', 'Quadriceps', 'machine', 'Leg press'],
+  ['Fentes haltères', 'Quadriceps', 'halteres', 'Dumbbell lunge'],
+  ['Soulevé de terre jambes tendues', 'Ischios', 'barre', 'Romanian deadlift'],
+  ['Leg curl', 'Ischios', 'machine', 'Leg curl'],
+  ['Hip thrust', 'Fessiers', 'barre', 'Hip thrust'],
+  ['Mollets debout', 'Mollets', 'machine', 'Standing calf raise'],
+  ['Crunch à la poulie', 'Abdos', 'poulie', 'Cable crunch'],
 ];
+export const baseName = (row) => (lang() === 'en' ? row[3] : row[0]);
 
 export function defaultIncrement(equipment) {
   return { barre: 2.5, halteres: 2, machine: 5, poulie: 2.5, pdc: 2.5 }[equipment] ?? 2.5;
@@ -287,10 +293,10 @@ export function isPdc(ex, base) {
 }
 
 export function baseLabel(base) {
-  if (!base || base.kind === 'none') return 'Sans barre';
-  if (base.kind === 'pdc') return 'Poids du corps';
+  if (!base || base.kind === 'none') return t('Sans barre');
+  if (base.kind === 'pdc') return t('Poids du corps');
   const preset = BAR_PRESETS.find(([, w]) => w === base.weight);
-  return preset ? `${preset[2]} ${fmt(base.weight)} kg` : `Barre ${fmt(base.weight)} kg`;
+  return preset ? `${t(preset[2])} ${fmt(base.weight)} kg` : t('Barre {w} kg', { w: fmt(base.weight) });
 }
 
 // Charge réelle : pour un exercice au poids du corps, poids du corps + lest.
@@ -583,14 +589,15 @@ export function techniqueUrl(ex, fallbackName = '') {
   const own = validVideoUrl(ex?.video_url);
   if (own) return own;
   const name = ex?.name || fallbackName;
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} technique exécution`)}`;
+  const q = lang() === 'en' ? `${name} exercise technique` : `${name} technique exécution`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
 }
 
 export function barWeightOf(ex) {
   return ex?.bar_weight ?? settings().bar;
 }
 
-// [nom court, poids, nom complet]
+// [nom court, poids, nom complet] (traduits à l'affichage)
 export const BAR_PRESETS = [
   ['Olympique', 20, 'Barre olympique'],
   ['Femme', 15, 'Barre femme'],

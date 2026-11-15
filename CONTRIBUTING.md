@@ -1,6 +1,8 @@
 # Contribuer à Fonte
 
-Merci de vouloir améliorer Fonte ! Toutes les idées sont les bienvenues, même petites.
+[English version](CONTRIBUTING.en.md)
+
+Merci de vouloir améliorer Fonte ! Toutes les idées sont les bienvenues, même petites, en français ou en anglais.
 
 ## Signaler un bug ou proposer une idée
 
@@ -15,8 +17,9 @@ Pas besoin de savoir coder pour ça.
 1. **Fork** ce dépôt (bouton en haut à droite).
 2. Fais tes modifications dans ta copie. Pour tester en local, lance `python3 -m http.server 8000` dans le dossier et ouvre `http://localhost:8000`.
 3. Si tu modifies des fichiers de l'app, augmente le numéro de version **aux deux endroits, avec la même valeur** : `VERSION` en haut de `sw.js` et `APP_VERSION` en haut de `js/app.js`.
-4. Si tu ajoutes une colonne à la base, ajoute-la dans `supabase/schema.sql`, dans la liste `columns` de `js/store.js`, et crée un fichier `supabase/migration-X.Y.sql` pour les installations existantes.
-5. Ouvre une **Pull request** vers ce dépôt en expliquant ce que tu as changé et pourquoi.
+4. Si tu ajoutes ou modifies un texte de l'interface, entoure-le de `t('…')` et ajoute sa traduction dans `js/i18n-en.js`.
+5. Si tu ajoutes une colonne à la base, ajoute-la dans `supabase/schema.sql`, dans la liste `columns` de `js/store.js`, et crée un fichier `supabase/migration-X.Y.sql` pour les installations existantes.
+6. Ouvre une **Pull request** vers ce dépôt en expliquant ce que tu as changé et pourquoi.
 
 Chaque proposition est relue avant d'être intégrée. Elle peut être acceptée, ajustée ou refusée selon la direction du projet.
 

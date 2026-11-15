@@ -5,6 +5,7 @@ import * as sync from '../sync.js';
 import { esc, icon, openSheet, confirmSheet, menuSheet, toast, debounce, formData } from '../ui.js';
 import { pickExercise, platesHtml, workoutRowHtml, videoSheet } from './common.js';
 import { runIntervals } from '../timer.js';
+import { t, tp, lang, numInput } from '../i18n.js';
 
 export function activeWorkout() {
   return store.all('workouts')
@@ -25,16 +26,16 @@ export function renderSeance(view, ctx) {
 export function renderWorkoutEdit(view, ctx, id) {
   const w = store.get('workouts', id);
   if (!w) {
-    view.innerHTML = `${ctx.pageHead('Séance', { back: '/historique' })}<p class="empty">Cette séance n'existe plus.</p>`;
+    view.innerHTML = `${ctx.pageHead(t('Séance'), { back: '/historique' })}<p class="empty">${t('Cette séance n’existe plus.')}</p>`;
     return;
   }
   editor(view, ctx, w, { live: !w.ended_at });
 }
 
 export function startWorkout(ctx, templateId) {
-  const t = templateId ? store.get('templates', templateId) : null;
-  const items = t
-    ? (t.items || [])
+  const tpl = templateId ? store.get('templates', templateId) : null;
+  const items = tpl
+    ? (tpl.items || [])
       .map((ti) => {
         const ex = store.get('exercises', ti.exercise_id);
         return ex ? calc.buildItem(ex, ti, store.uuid) : null;
@@ -43,8 +44,8 @@ export function startWorkout(ctx, templateId) {
     : [];
   store.save('workouts', {
     id: store.uuid(),
-    template_id: t?.id || null,
-    name: t ? t.name : 'Séance libre',
+    template_id: tpl?.id || null,
+    name: tpl ? tpl.name : t('Séance libre'),
     started_at: new Date().toISOString(),
     ended_at: null,
     notes: '',
@@ -56,7 +57,7 @@ export function startWorkout(ctx, templateId) {
 // ---------- Choix de la séance ----------
 function renderStart(view, ctx) {
   const templates = store.all('templates')
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name, 'fr'));
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.name.localeCompare(b.name, lang()));
   const exercises = store.all('exercises');
   const done = calc.finishedWorkouts();
   const week = calc.weekSummary();
@@ -68,41 +69,41 @@ function renderStart(view, ctx) {
   };
 
   const banner = sync.isConfigured() && !sync.isSignedIn()
-    ? `<a class="banner" href="#/compte">Connecte-toi pour synchroniser ton iPhone, ta tablette et ton ordinateur.</a>`
+    ? `<a class="banner" href="#/compte">${t('Connecte-toi pour synchroniser ton téléphone, ta tablette et ton ordinateur.')}</a>`
     : '';
 
   view.innerHTML = `
-    ${ctx.pageHead('Séance')}
+    ${ctx.pageHead(t('Séance'))}
     ${banner}
     <section class="block">
-      <h2 class="block-title">Démarrer une séance</h2>
+      <h2 class="block-title">${t('Démarrer une séance')}</h2>
       <div class="tpl-grid">
-        ${templates.map((t) => {
-          const names = (t.items || []).map((it) => store.getAny('exercises', it.exercise_id)?.name).filter(Boolean);
-          const lw = lastFor(t.id);
-          return `<button class="tpl" data-start="${t.id}">
-            <span class="tpl-name">${esc(t.name)}</span>
+        ${templates.map((tpl) => {
+          const names = (tpl.items || []).map((it) => store.getAny('exercises', it.exercise_id)?.name).filter(Boolean);
+          const lw = lastFor(tpl.id);
+          return `<button class="tpl" data-start="${tpl.id}">
+            <span class="tpl-name">${esc(tpl.name)}</span>
             <span class="tpl-list">${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? `, +${names.length - 4}` : ''}</span>
-            <span class="tpl-last">${lw ? `Dernière fois ${esc(calc.relDays(lw.started_at))}` : 'Jamais faite'}</span>
+            <span class="tpl-last">${lw ? esc(t('Dernière fois {when}', { when: calc.relDays(lw.started_at) })) : t('Jamais faite')}</span>
           </button>`;
         }).join('')}
         <button class="tpl tpl-free" data-start="free">
-          <span class="tpl-name">Séance libre</span>
-          <span class="tpl-list">Tu ajoutes les exercices au fil de la séance.</span>
+          <span class="tpl-name">${t('Séance libre')}</span>
+          <span class="tpl-list">${t('Tu ajoutes les exercices au fil de la séance.')}</span>
         </button>
       </div>
-      ${!exercises.length ? `<p class="hint-text">Ta liste d'exercices est vide. <a href="#/exercices">Ajouter des exercices</a></p>` : ''}
-      ${exercises.length && !templates.length ? `<p class="hint-text">Un programme prépare tes séances : exercices, nombre de séries, fourchette de répétitions et repos. <a href="#/programmes">Créer un programme</a></p>` : ''}
+      ${!exercises.length ? `<p class="hint-text">${t('Ta liste d’exercices est vide.')} <a href="#/exercices">${t('Ajouter des exercices')}</a></p>` : ''}
+      ${exercises.length && !templates.length ? `<p class="hint-text">${t('Un programme prépare tes séances : exercices, nombre de séries, fourchette de répétitions et repos.')} <a href="#/programmes">${t('Créer un programme')}</a></p>` : ''}
     </section>
     <section class="block">
-      <h2 class="block-title">Cette semaine</h2>
+      <h2 class="block-title">${t('Cette semaine')}</h2>
       <div class="figures">
-        <div class="figure"><span class="fig-value">${week.count}</span><span class="fig-label">séance${week.count > 1 ? 's' : ''}</span></div>
-        <div class="figure"><span class="fig-value">${week.sets}</span><span class="fig-label">série${week.sets > 1 ? 's' : ''}</span></div>
-        <div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(week.tonnage))}</span><span class="fig-label">soulevés</span></div>
+        <div class="figure"><span class="fig-value">${week.count}</span><span class="fig-label">${tp(week.count, 'séance', 'séances')}</span></div>
+        <div class="figure"><span class="fig-value">${week.sets}</span><span class="fig-label">${tp(week.sets, 'série', 'séries')}</span></div>
+        <div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(week.tonnage))}</span><span class="fig-label">${t('soulevés')}</span></div>
       </div>
     </section>
-    ${last ? `<section class="block"><h2 class="block-title">Dernière séance</h2><div class="hist-list">${workoutRowHtml(last)}</div></section>` : ''}`;
+    ${last ? `<section class="block"><h2 class="block-title">${t('Dernière séance')}</h2><div class="hist-list">${workoutRowHtml(last)}</div></section>` : ''}`;
 
   view.addEventListener('click', (e) => {
     const b = e.target.closest('[data-start]');
@@ -112,7 +113,7 @@ function renderStart(view, ctx) {
 }
 
 // ---------- Saisie de la séance ----------
-const numStr = (n) => (n == null ? '' : String(n).replace('.', ','));
+const numStr = (n) => numInput(n);
 
 function editor(view, ctx, original, { live }) {
   let w = JSON.parse(JSON.stringify(original));
@@ -134,7 +135,7 @@ function editor(view, ctx, original, { live }) {
   };
 
   const sub = () => live
-    ? `Depuis ${esc(calc.fmtTime(w.started_at))}, <span data-elapsed>${esc(calc.fmtDuration(Date.now() - Date.parse(w.started_at)))}</span>`
+    ? t('Depuis {time}, {elapsed}', { time: esc(calc.fmtTime(w.started_at)), elapsed: `<span data-elapsed>${esc(calc.fmtDuration(Date.now() - Date.parse(w.started_at)))}</span>` })
     : esc(calc.fmtFull(w.started_at));
 
   const nextWeight = (item) => {
@@ -145,26 +146,28 @@ function editor(view, ctx, original, { live }) {
   function targetText(item, mode) {
     const n = item.target_sets || item.sets.length;
     if (mode === 'duree') {
-      const t = item.target_t || item.sets[0]?.t;
+      const dur = calc.fmtSec(item.target_t || item.sets[0]?.t);
       if (item.int_rest != null) {
+        const rec = calc.fmtSec(item.int_rest);
         return item.circuit
-          ? `Circuit : ${n} tours, ${calc.fmtSec(t)} d'effort, ${calc.fmtSec(item.int_rest)} de récup`
-          : `${n} × ${calc.fmtSec(t)} d'effort, ${calc.fmtSec(item.int_rest)} de récup`;
+          ? tp(n, 'Circuit : {n} tour, {t} d’effort, {r} de récup', 'Circuit : {n} tours, {t} d’effort, {r} de récup', { t: dur, r: rec })
+          : t('{n} × {t} d’effort, {r} de récup', { n, t: dur, r: rec });
       }
-      return `${n} × ${calc.fmtSec(t)}, repos ${calc.fmtRest(item.rest_sec)}`;
+      return t('{n} × {t}, repos {rest}', { n, t: dur, rest: calc.fmtRest(item.rest_sec) });
     }
-    if (mode === 'cardio') return 'Durée en minutes, distance en km';
+    if (mode === 'cardio') return t('Durée en minutes, distance en km');
     if (item.target_sets && (item.rep_min || item.rep_max)) {
       const lo = item.rep_min ?? item.rep_max;
       const hi = item.rep_max ?? item.rep_min;
-      return `Objectif ${item.target_sets} × ${lo}${hi !== lo ? ` à ${hi}` : ''} reps, repos ${calc.fmtRest(item.rest_sec)}`;
+      const reps = hi !== lo ? t('{lo} à {hi}', { lo, hi }) : String(lo);
+      return t('Objectif {n} × {reps} reps, repos {rest}', { n: item.target_sets, reps, rest: calc.fmtRest(item.rest_sec) });
     }
-    return `Repos ${calc.fmtRest(item.rest_sec)}`;
+    return t('Repos {rest}', { rest: calc.fmtRest(item.rest_sec) });
   }
 
   function itemHtml(item, idx) {
     const ex = store.getAny('exercises', item.exercise_id);
-    const name = ex?.name || item.name || 'Exercice supprimé';
+    const name = ex?.name || item.name || t('Exercice supprimé');
     const mode = calc.itemMode(item, ex);
     const base = item.base || calc.defaultBase(ex);
     const pdc = mode === 'reps' && base.kind === 'pdc';
@@ -172,98 +175,104 @@ function editor(view, ctx, original, { live }) {
     const last = calc.lastSession(item.exercise_id, { excludeWorkout: w.id, before: w.started_at });
     const lastSame = last && last.mode === mode ? last : null;
     const records = calc.recordsIn(w);
+    const warmLetter = t('É');
     let k = 0;
     const rows = item.sets.map((st) => {
       const prev = !st.warmup && lastSame ? lastSame.sets[k] : null;
-      const num = st.warmup ? 'É' : String(++k);
+      const num = st.warmup ? warmLetter : String(++k);
       let prevTxt = '–';
       let fields = '';
       if (mode === 'duree') {
         if (prev) prevTxt = calc.fmtSec(prev.t);
-        fields = `<input class="num" data-field="t" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.t)}" aria-label="Durée en secondes, série ${esc(num)}">`;
+        fields = `<input class="num" data-field="t" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.t)}" aria-label="${esc(t('Durée en secondes, série {n}', { n: num }))}">`;
       } else if (mode === 'cardio') {
         if (prev) prevTxt = [prev.d ? `${calc.fmt(prev.d)} km` : '', prev.t ? calc.fmtSec(prev.t) : ''].filter(Boolean).join(', ');
-        fields = `<input class="num" data-field="tmin" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${st.t ? numStr(Math.round((st.t / 60) * 100) / 100) : ''}" aria-label="Durée en minutes, série ${esc(num)}">
-          <input class="num" data-field="d" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${numStr(st.d)}" aria-label="Distance en km, série ${esc(num)}">`;
+        fields = `<input class="num" data-field="tmin" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${st.t ? numStr(Math.round((st.t / 60) * 100) / 100) : ''}" aria-label="${esc(t('Durée en minutes, série {n}', { n: num }))}">
+          <input class="num" data-field="d" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${numStr(st.d)}" aria-label="${esc(t('Distance en km, série {n}', { n: num }))}">`;
       } else {
-        if (prev) prevTxt = `${prev.pdc ? (prev.w ? `+${calc.fmt(prev.w)}` : 'PDC') : calc.fmt(prev.w)} × ${prev.r}`;
-        fields = `<input class="num" data-field="w" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${numStr(st.w)}" placeholder="${pdc ? '0' : ''}" aria-label="${pdc ? 'Lest' : 'Charge'} en kg, série ${esc(num)}">
-          <input class="num" data-field="r" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.r)}" aria-label="Répétitions, série ${esc(num)}">
-          ${s.showRir ? `<input class="num" data-field="rir" inputmode="numeric" autocomplete="off" value="${numStr(st.rir)}" aria-label="Répétitions en réserve, série ${esc(num)}">` : ''}`;
+        if (prev) prevTxt = `${prev.pdc ? (prev.w ? `+${calc.fmt(prev.w)}` : t('PDC')) : calc.fmt(prev.w)} × ${prev.r}`;
+        fields = `<input class="num" data-field="w" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${numStr(st.w)}" placeholder="${pdc ? '0' : ''}" aria-label="${esc(pdc ? t('Lest en kg, série {n}', { n: num }) : t('Charge en kg, série {n}', { n: num }))}">
+          <input class="num" data-field="r" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.r)}" aria-label="${esc(t('Répétitions, série {n}', { n: num }))}">
+          ${s.showRir ? `<input class="num" data-field="rir" inputmode="numeric" autocomplete="off" value="${numStr(st.rir)}" aria-label="${esc(t('Répétitions en réserve, série {n}', { n: num }))}">` : ''}`;
       }
       const isRec = records.has(`${item.uid}:${st.uid}`);
       return `<div class="set ${st.done ? 'is-done' : ''} ${st.warmup ? 'is-warmup' : ''} ${isRec ? 'is-record' : ''}" data-set="${st.uid}">
-        <button class="set-num" data-set-menu aria-label="Options de la série ${esc(num)}">${num}</button>
-        <span class="set-prev">${isRec ? '<span class="tag record">Record</span>' : esc(prevTxt)}</span>
+        <button class="set-num" data-set-menu aria-label="${esc(t('Options de la série {n}', { n: num }))}">${num}</button>
+        <span class="set-prev">${isRec ? `<span class="tag record">${t('Record')}</span>` : esc(prevTxt)}</span>
         ${fields}
-        <button class="set-check" data-check aria-pressed="${st.done ? 'true' : 'false'}" aria-label="Série ${esc(num)} faite">${icon('check')}</button>
+        <button class="set-check" data-check aria-pressed="${st.done ? 'true' : 'false'}" aria-label="${esc(t('Série {n} faite', { n: num }))}">${icon('check')}</button>
       </div>`;
     }).join('');
 
     let head = '';
     let setsCls = '';
+    const H = (x) => `<span>${x}</span>`;
     if (mode === 'duree') {
-      head = '<span>Série</span><span>Précédent</span><span>Durée (s)</span><span></span>';
+      head = H(t('Série')) + H(t('Précédent')) + H(t('Durée (s)')) + H('');
       setsCls = 'mode-duree';
     } else if (mode === 'cardio') {
-      head = '<span>Série</span><span>Précédent</span><span>Min</span><span>Km</span><span></span>';
+      head = H(t('Série')) + H(t('Précédent')) + H('Min') + H('Km') + H('');
       setsCls = 'mode-cardio';
     } else {
-      head = `<span>Série</span><span>Précédent</span><span>${pdc ? 'Lest' : 'kg'}</span><span>Reps</span>${s.showRir ? '<span>RIR</span>' : ''}<span></span>`;
+      head = H(t('Série')) + H(t('Précédent')) + H(pdc ? t('Lest') : 'kg') + H(t('Reps')) + (s.showRir ? H(t('RIR')) : '') + H('');
       setsCls = s.showRir ? 'with-rir' : '';
     }
 
     let extra = '';
     if (mode === 'cardio') {
-      const done = item.sets.filter((x) => x.done);
-      const t = done.reduce((n, x) => n + (x.t || 0), 0);
-      const d = done.reduce((n, x) => n + (x.d || 0), 0);
-      if (t > 0 && d > 0) extra = `<p class="ex-pace">Allure : ${esc(calc.fmtPace(t / d))}, vitesse : ${esc(calc.fmt1(d / (t / 3600)))} km/h</p>`;
+      const doneSets = item.sets.filter((x) => x.done);
+      const time = doneSets.reduce((n, x) => n + (x.t || 0), 0);
+      const dist = doneSets.reduce((n, x) => n + (x.d || 0), 0);
+      if (time > 0 && dist > 0) extra = `<p class="ex-pace">${esc(t('Allure : {pace}, vitesse : {speed} km/h', { pace: calc.fmtPace(time / dist), speed: calc.fmt1(dist / (time / 3600)) }))}</p>`;
     }
     const prevItem = idx > 0 ? w.items[idx - 1] : null;
     const insideCircuit = item.circuit && prevItem?.circuit && calc.itemMode(prevItem, store.getAny('exercises', prevItem.exercise_id)) === 'duree';
     const canTime = mode === 'duree' && live && !insideCircuit && item.sets.some((x) => !x.done && x.t > 0);
+    const baseText = calc.baseLabel(base);
 
     return `<section class="ex" data-item="${item.uid}">
       <header class="ex-head">
         <div class="ex-titles">
           ${mode === 'reps'
-            ? `<h2 class="ex-name"><button class="ex-name-btn" data-base aria-label="${esc(name)} : changer la charge de départ (actuellement ${esc(calc.baseLabel(base))})">${esc(name)}</button></h2>
-               <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(calc.baseLabel(base))}${icon('down')}</button>`
-            : `<h2 class="ex-name">${esc(name)}</h2>${item.circuit ? '<span class="tag">Circuit</span>' : ''}`}
+            ? `<h2 class="ex-name"><button class="ex-name-btn" data-base aria-label="${esc(t('{name} : changer la charge de départ (actuellement {base})', { name, base: baseText }))}">${esc(name)}</button></h2>
+               <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(baseText)}${icon('down')}</button>`
+            : `<h2 class="ex-name">${esc(name)}</h2>${item.circuit ? `<span class="tag">${t('Circuit')}</span>` : ''}`}
           <p class="ex-meta">${esc(targetText(item, mode))}</p>
-          <a class="tech-link" href="${esc(calc.techniqueUrl(ex, name))}" target="_blank" rel="noopener noreferrer">${icon('play')}<span>${calc.validVideoUrl(ex?.video_url) ? 'Voir ma vidéo de référence' : 'Voir la technique'}</span></a>
+          <a class="tech-link" href="${esc(calc.techniqueUrl(ex, name))}" target="_blank" rel="noopener noreferrer">${icon('play')}<span>${calc.validVideoUrl(ex?.video_url) ? t('Voir ma vidéo de référence') : t('Voir la technique')}</span></a>
         </div>
-        <button class="icon-btn" data-item-menu aria-label="Options de l'exercice ${esc(name)}">${icon('more')}</button>
+        <button class="icon-btn" data-item-menu aria-label="${esc(t('Options de l’exercice {name}', { name }))}">${icon('more')}</button>
       </header>
-      ${item.progressed && !item.sets.some((x) => x.done) ? `<p class="ex-hint">Toutes tes séries ont atteint ${item.rep_max} reps la dernière fois : charge augmentée de ${esc(calc.fmt(item.progressed))} kg.</p>` : ''}
+      ${item.progressed && !item.sets.some((x) => x.done) ? `<p class="ex-hint">${esc(t('Toutes tes séries ont atteint {reps} reps la dernière fois : charge augmentée de {inc} kg.', { reps: item.rep_max, inc: calc.fmt(item.progressed) }))}</p>` : ''}
       ${ex?.notes ? `<p class="ex-notes">${esc(ex.notes)}</p>` : ''}
       ${barbell ? `<div class="plates" data-plates>${platesHtml(nextWeight(item), ex, base)}</div>` : ''}
-      ${canTime ? `<button class="btn timer-btn" data-timer>${icon('play')}<span>Lancer le minuteur${item.circuit ? ' du circuit' : ''}</span></button>` : ''}
+      ${canTime ? `<button class="btn timer-btn" data-timer>${icon('play')}<span>${item.circuit ? t('Lancer le minuteur du circuit') : t('Lancer le minuteur')}</span></button>` : ''}
       <div class="sets ${setsCls}">
         <div class="set-head" aria-hidden="true">${head}</div>
         ${rows}
       </div>
       ${extra}
-      <button class="add-set" data-add-set>${icon('add')}<span>Ajouter une série</span></button>
+      <button class="add-set" data-add-set>${icon('add')}<span>${t('Ajouter une série')}</span></button>
     </section>`;
   }
 
   function draw() {
     const st = calc.workoutStats(w);
+    const summary = [tp(st.sets, '{n} série faite', '{n} séries faites')];
+    if (st.tonnage) summary.push(t('{v} soulevés', { v: calc.fmtTonnage(st.tonnage) }));
+    if (st.time) summary.push(t('{v} d’effort', { v: calc.fmtSec(st.time) }));
     view.innerHTML = `
-      ${ctx.pageHead(w.name || 'Séance', {
+      ${ctx.pageHead(w.name || t('Séance'), {
         back: live ? null : `/historique/${w.id}`,
         sub: sub(),
-        actions: `<button class="icon-btn" data-wmenu aria-label="Options de la séance">${icon('more')}</button>
-          ${live ? '<button class="btn primary small" data-finish>Terminer</button>' : `<a class="btn small" href="#/historique/${w.id}">Fermer</a>`}`,
+        actions: `<button class="icon-btn" data-wmenu aria-label="${esc(t('Options de la séance'))}">${icon('more')}</button>
+          ${live ? `<button class="btn primary small" data-finish>${t('Terminer')}</button>` : `<a class="btn small" href="#/historique/${w.id}">${t('Fermer')}</a>`}`,
       })}
-      ${w.items.length ? w.items.map(itemHtml).join('') : `<p class="empty">Ajoute un premier exercice pour commencer.</p>`}
-      <button class="btn ghost block add-ex" data-add-ex>${icon('add')}<span>Ajouter un exercice</span></button>
+      ${w.items.length ? w.items.map(itemHtml).join('') : `<p class="empty">${t('Ajoute un premier exercice pour commencer.')}</p>`}
+      <button class="btn ghost block add-ex" data-add-ex>${icon('add')}<span>${t('Ajouter un exercice')}</span></button>
       ${w.notes ? `<p class="w-notes">${esc(w.notes)}</p>` : ''}
       ${live && w.items.length ? `<div class="finish-zone">
-          <p>${st.sets} série${st.sets > 1 ? 's' : ''} faite${st.sets > 1 ? 's' : ''}${st.tonnage ? `, ${esc(calc.fmtTonnage(st.tonnage))} soulevés` : ''}${st.time ? `, ${esc(calc.fmtSec(st.time))} d'effort` : ''}</p>
-          <button class="btn primary block" data-finish>Terminer la séance</button>
+          <p>${esc(summary.join(', '))}</p>
+          <button class="btn primary block" data-finish>${t('Terminer la séance')}</button>
         </div>` : ''}`;
   }
 
@@ -305,16 +314,16 @@ function editor(view, ctx, original, { live }) {
   });
 
   view.addEventListener('click', async (e) => {
-    const t = e.target;
+    const el = e.target;
 
-    if (t.closest('[data-check]')) {
-      const item = findItem(t);
-      const set = findSet(t, item);
+    if (el.closest('[data-check]')) {
+      const item = findItem(el);
+      const set = findSet(el, item);
       if (!set) return;
       if (!set.done) {
         const mode = calc.itemMode(item, store.getAny('exercises', item.exercise_id));
         if (!calc.setCounts({ ...set, done: true, warmup: false }, mode)) {
-          const row = t.closest('[data-set]');
+          const row = el.closest('[data-set]');
           row.classList.remove('shake');
           void row.offsetWidth;
           row.classList.add('shake');
@@ -332,7 +341,7 @@ function editor(view, ctx, original, { live }) {
         const restFor = mode === 'duree' && item.int_rest != null && nxt ? item.int_rest : item.rest_sec || s.rest;
         if (live && !set.warmup && mode !== 'cardio') ctx.rest.start(restFor);
         rerender();
-        if (calc.recordsIn(w).has(`${item.uid}:${set.uid}`)) toast('Nouveau record sur cet exercice.', { kind: 'record' });
+        if (calc.recordsIn(w).has(`${item.uid}:${set.uid}`)) toast(t('Nouveau record sur cet exercice.'), { kind: 'record' });
       } else {
         set.done = false;
         set.at = null;
@@ -341,8 +350,8 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-timer]')) {
-      const item = findItem(t);
+    if (el.closest('[data-timer]')) {
+      const item = findItem(el);
       save();
       ctx.rest.stop();
       runIntervals(ctx, w, item.uid, {
@@ -352,8 +361,8 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-base]')) {
-      const item = findItem(t);
+    if (el.closest('[data-base]')) {
+      const item = findItem(el);
       const ex = store.getAny('exercises', item.exercise_id);
       const v = await baseSheet(ex?.name || item.name, item.base || calc.defaultBase(ex));
       if (!v) return;
@@ -366,8 +375,8 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-add-set]')) {
-      const item = findItem(t);
+    if (el.closest('[data-add-set]')) {
+      const item = findItem(el);
       const lastSet = item.sets[item.sets.length - 1];
       const mode = calc.itemMode(item, store.getAny('exercises', item.exercise_id));
       if (mode === 'duree') item.sets.push({ uid: store.uuid(), t: lastSet?.t ?? 30, done: false, warmup: false });
@@ -377,12 +386,12 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-set-menu]')) {
-      const item = findItem(t);
-      const set = findSet(t, item);
-      const choice = await menuSheet('Série', [
-        { label: set.warmup ? 'Compter comme série de travail' : 'Marquer comme échauffement', value: 'warm' },
-        { label: 'Supprimer la série', value: 'del', danger: true, icon: 'trash' },
+    if (el.closest('[data-set-menu]')) {
+      const item = findItem(el);
+      const set = findSet(el, item);
+      const choice = await menuSheet(t('Série'), [
+        { label: set.warmup ? t('Compter comme série de travail') : t('Marquer comme échauffement'), value: 'warm' },
+        { label: t('Supprimer la série'), value: 'del', danger: true, icon: 'trash' },
       ]);
       if (choice === 'warm') set.warmup = !set.warmup;
       if (choice === 'del') item.sets.splice(item.sets.indexOf(set), 1);
@@ -390,20 +399,20 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-item-menu]')) {
-      const item = findItem(t);
+    if (el.closest('[data-item-menu]')) {
+      const item = findItem(el);
       const idx = w.items.indexOf(item);
       const items = [];
-      if (idx > 0) items.push({ label: 'Monter', value: 'up', icon: 'up' });
-      if (idx < w.items.length - 1) items.push({ label: 'Descendre', value: 'down', icon: 'down' });
-      items.push({ label: 'Temps de repos', value: 'rest' });
+      if (idx > 0) items.push({ label: t('Monter'), value: 'up', icon: 'up' });
+      if (idx < w.items.length - 1) items.push({ label: t('Descendre'), value: 'down', icon: 'down' });
+      items.push({ label: t('Temps de repos'), value: 'rest' });
       if (calc.itemMode(item, store.getAny('exercises', item.exercise_id)) === 'duree') {
-        items.push({ label: item.circuit ? 'Retirer du circuit' : 'Enchaîner en circuit avec les voisins', value: 'circuit' });
+        items.push({ label: item.circuit ? t('Retirer du circuit') : t('Enchaîner en circuit avec les voisins'), value: 'circuit' });
       }
-      items.push({ label: 'Voir la progression', value: 'progress' });
+      items.push({ label: t('Voir la progression'), value: 'progress' });
       const exo = store.get('exercises', item.exercise_id);
-      if (exo) items.push({ label: calc.validVideoUrl(exo.video_url) ? 'Changer ma vidéo de référence' : 'Ajouter ma vidéo de référence', value: 'video', icon: 'play' });
-      items.push({ label: 'Retirer de la séance', value: 'remove', danger: true, icon: 'trash' });
+      if (exo) items.push({ label: calc.validVideoUrl(exo.video_url) ? t('Changer ma vidéo de référence') : t('Ajouter ma vidéo de référence'), value: 'video', icon: 'play' });
+      items.push({ label: t('Retirer de la séance'), value: 'remove', danger: true, icon: 'trash' });
       const name = store.getAny('exercises', item.exercise_id)?.name || item.name;
       const c = await menuSheet(name, items);
       if (c === 'up' || c === 'down') {
@@ -419,7 +428,7 @@ function editor(view, ctx, original, { live }) {
       } else if (c === 'video') {
         const saved = await videoSheet(store.get('exercises', item.exercise_id));
         if (saved) {
-          toast(saved.video_url ? 'Vidéo de référence enregistrée.' : 'Vidéo de référence retirée.');
+          toast(saved.video_url ? t('Vidéo de référence enregistrée.') : t('Vidéo de référence retirée.'));
           rerender();
         }
       } else if (c === 'circuit') {
@@ -431,14 +440,14 @@ function editor(view, ctx, original, { live }) {
         ctx.go(`/progres/${item.exercise_id}`);
       } else if (c === 'remove') {
         const hasDone = item.sets.some((x) => x.done);
-        if (hasDone && !(await confirmSheet('Retirer l’exercice', 'Les séries déjà faites sur cet exercice seront perdues.', { ok: 'Retirer', danger: true }))) return;
+        if (hasDone && !(await confirmSheet(t('Retirer l’exercice'), t('Les séries déjà faites sur cet exercice seront perdues.'), { ok: t('Retirer'), danger: true }))) return;
         w.items.splice(idx, 1);
         rerender();
       }
       return;
     }
 
-    if (t.closest('[data-add-ex]')) {
+    if (el.closest('[data-add-ex]')) {
       const id = await pickExercise();
       const ex = id && store.get('exercises', id);
       if (!ex) return;
@@ -449,18 +458,18 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-wmenu]')) {
-      const c = await menuSheet(w.name || 'Séance', [
-        { label: 'Renommer', value: 'rename', icon: 'edit' },
-        { label: w.notes ? 'Modifier la note' : 'Ajouter une note', value: 'notes' },
-        { label: 'Date et durée', value: 'date' },
-        { label: live ? 'Abandonner la séance' : 'Supprimer la séance', value: 'delete', danger: true, icon: 'trash' },
+    if (el.closest('[data-wmenu]')) {
+      const c = await menuSheet(w.name || t('Séance'), [
+        { label: t('Renommer'), value: 'rename', icon: 'edit' },
+        { label: w.notes ? t('Modifier la note') : t('Ajouter une note'), value: 'notes' },
+        { label: t('Date et durée'), value: 'date' },
+        { label: live ? t('Abandonner la séance') : t('Supprimer la séance'), value: 'delete', danger: true, icon: 'trash' },
       ]);
       if (c === 'rename' || c === 'notes') {
         const field = c === 'rename' ? 'name' : 'notes';
-        const v = await textSheet(c === 'rename' ? 'Nom de la séance' : 'Note de séance', w[field] || '', field === 'notes');
+        const v = await textSheet(c === 'rename' ? t('Nom de la séance') : t('Note de séance'), w[field] || '', field === 'notes');
         if (v !== null) {
-          w[field] = v.trim() || (field === 'name' ? 'Séance' : '');
+          w[field] = v.trim() || (field === 'name' ? t('Séance') : '');
           rerender();
         }
       } else if (c === 'date') {
@@ -470,7 +479,7 @@ function editor(view, ctx, original, { live }) {
           rerender();
         }
       } else if (c === 'delete') {
-        const ok = await confirmSheet(live ? 'Abandonner la séance' : 'Supprimer la séance', 'La séance et toutes ses séries seront supprimées.', { ok: live ? 'Abandonner' : 'Supprimer', danger: true });
+        const ok = await confirmSheet(live ? t('Abandonner la séance') : t('Supprimer la séance'), t('La séance et toutes ses séries seront supprimées.'), { ok: live ? t('Abandonner') : t('Supprimer'), danger: true });
         if (!ok) return;
         store.remove('workouts', w.id);
         if (live) {
@@ -482,7 +491,7 @@ function editor(view, ctx, original, { live }) {
       return;
     }
 
-    if (t.closest('[data-finish]')) finish();
+    if (el.closest('[data-finish]')) finish();
   });
 
   view.addEventListener('change', (e) => {
@@ -493,7 +502,7 @@ function editor(view, ctx, original, { live }) {
     save();
     const doneSets = w.items.reduce((n, it) => n + it.sets.filter((x) => x.done).length, 0);
     if (!doneSets) {
-      const del = await confirmSheet('Aucune série cochée', 'Coche les séries réalisées avant de terminer. Tu peux aussi abandonner cette séance vide.', { ok: 'Abandonner la séance', danger: true });
+      const del = await confirmSheet(t('Aucune série cochée'), t('Coche les séries réalisées avant de terminer. Tu peux aussi abandonner cette séance vide.'), { ok: t('Abandonner la séance'), danger: true });
       if (del) {
         store.remove('workouts', w.id);
         ctx.rest.stop();
@@ -505,20 +514,21 @@ function editor(view, ctx, original, { live }) {
     const undone = w.items.reduce((n, it) => n + it.sets.filter((x) => !x.done).length, 0);
     const st = calc.workoutStats(w);
     const rec = calc.recordsIn(w).size;
+    const fig = (value, label, cls = '') => `<div class="figure ${cls}"><span class="fig-value">${value}</span><span class="fig-label">${label}</span></div>`;
     const ok = await openSheet({
-      title: 'Terminer la séance',
+      title: t('Terminer la séance'),
       body: `<div class="figures compact">
-          <div class="figure"><span class="fig-value">${esc(calc.fmtDuration(st.duration))}</span><span class="fig-label">durée</span></div>
-          <div class="figure"><span class="fig-value">${st.sets}</span><span class="fig-label">séries</span></div>
-          ${st.tonnage || !st.time ? `<div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(st.tonnage))}</span><span class="fig-label">soulevés</span></div>` : ''}
-          ${st.time ? `<div class="figure"><span class="fig-value">${esc(calc.fmtSec(st.time))}</span><span class="fig-label">d'effort</span></div>` : ''}
-          ${st.dist ? `<div class="figure"><span class="fig-value">${esc(calc.fmt1(st.dist))}<small>km</small></span><span class="fig-label">parcourus</span></div>` : ''}
-          ${rec ? `<div class="figure is-record"><span class="fig-value">${rec}</span><span class="fig-label">record${rec > 1 ? 's' : ''}</span></div>` : ''}
+          ${fig(esc(calc.fmtDuration(st.duration)), t('durée'))}
+          ${fig(st.sets, tp(st.sets, 'série', 'séries'))}
+          ${st.tonnage || !st.time ? fig(esc(calc.fmtTonnage(st.tonnage)), t('soulevés')) : ''}
+          ${st.time ? fig(esc(calc.fmtSec(st.time)), t('d’effort')) : ''}
+          ${st.dist ? fig(`${esc(calc.fmt1(st.dist))}<small>km</small>`, t('parcourus')) : ''}
+          ${rec ? fig(rec, tp(rec, 'record', 'records'), 'is-record') : ''}
         </div>
-        ${undone ? `<p class="sheet-text">${undone} série${undone > 1 ? 's' : ''} non cochée${undone > 1 ? 's' : ''} ${undone > 1 ? 'seront retirées' : 'sera retirée'}.</p>` : ''}`,
+        ${undone ? `<p class="sheet-text">${esc(tp(undone, '{n} série non cochée sera retirée.', '{n} séries non cochées seront retirées.'))}</p>` : ''}`,
       actions: [
-        { label: 'Continuer la séance', value: false },
-        { label: 'Enregistrer', kind: 'primary', value: true },
+        { label: t('Continuer la séance'), value: false },
+        { label: t('Enregistrer'), kind: 'primary', value: true },
       ],
     });
     if (!ok) return;
@@ -528,7 +538,7 @@ function editor(view, ctx, original, { live }) {
     save();
     ctx.rest.stop();
     ctx.wake.disable();
-    toast(rec ? `Séance enregistrée, ${rec} record${rec > 1 ? 's' : ''} battu${rec > 1 ? 's' : ''}.` : 'Séance enregistrée.', { kind: rec ? 'record' : '' });
+    toast(rec ? tp(rec, 'Séance enregistrée, {n} record battu.', 'Séance enregistrée, {n} records battus.') : t('Séance enregistrée.'), { kind: rec ? 'record' : '' });
     ctx.go(`/historique/${w.id}`);
   }
 
@@ -548,19 +558,19 @@ function editor(view, ctx, original, { live }) {
 function baseSheet(name, current) {
   const same = (a, b) => a.kind === b.kind && (a.kind !== 'bar' || a.weight === b.weight);
   const options = [
-    ...calc.BAR_PRESETS.map(([, wt, long]) => ({ value: { kind: 'bar', weight: wt }, label: long, detail: `${calc.fmt(wt)} kg` })),
-    { value: { kind: 'pdc' }, label: 'Poids du corps', detail: 'tu saisis le lest' },
-    { value: { kind: 'none' }, label: 'Sans barre', detail: 'haltères, machine, poulie' },
+    ...calc.BAR_PRESETS.map(([, wt, long]) => ({ value: { kind: 'bar', weight: wt }, label: t(long), detail: `${calc.fmt(wt)} kg` })),
+    { value: { kind: 'pdc' }, label: t('Poids du corps'), detail: t('tu saisis le lest') },
+    { value: { kind: 'none' }, label: t('Sans barre'), detail: t('haltères, machine, poulie') },
   ];
   const customOn = current.kind === 'bar' && !calc.BAR_PRESETS.some(([, wt]) => wt === current.weight);
   return openSheet({
     title: name,
-    body: `<p class="sheet-text first">Charge de départ pour cet exercice</p>
+    body: `<p class="sheet-text first">${t('Charge de départ pour cet exercice')}</p>
       <div class="menu-list">${options.map((o, i) => `<button class="menu-item ${same(o.value, current) ? 'is-on' : ''}" data-opt="${i}">
         <span class="mi-main">${esc(o.label)}</span><span class="mi-detail">${esc(o.detail)}</span>${same(o.value, current) ? icon('check') : ''}</button>`).join('')}</div>
       <form class="custom-bar" data-custom>
-        <label class="field"><span>Autre barre (kg)</span>
-          <span class="inline-input"><input name="bar" inputmode="decimal" value="${customOn ? numStr(current.weight) : ''}" placeholder="ex. 12,5"><button class="btn" type="submit">Utiliser</button></span></label>
+        <label class="field"><span>${t('Autre barre (kg)')}</span>
+          <span class="inline-input"><input name="bar" inputmode="decimal" value="${customOn ? numStr(current.weight) : ''}" placeholder="${esc(t('ex. {v}', { v: numInput(12.5) }))}"><button class="btn" type="submit">${t('Utiliser')}</button></span></label>
       </form>`,
     onMount(el, api) {
       el.addEventListener('click', (e) => {
@@ -579,9 +589,9 @@ function baseSheet(name, current) {
 function restSheet(current) {
   const presets = [60, 90, 120, 150, 180, 240];
   return openSheet({
-    title: 'Temps de repos',
+    title: t('Temps de repos'),
     body: `<div class="chips">${presets.map((p) => `<button class="chip ${p === current ? 'is-on' : ''}" data-preset="${p}">${esc(calc.fmtRest(p))}</button>`).join('')}</div>
-      <label class="field"><span>Ou en secondes</span><input name="sec" inputmode="numeric" value="${current}"></label>`,
+      <label class="field"><span>${t('Ou en secondes')}</span><input name="sec" inputmode="numeric" value="${current}"></label>`,
     onMount(el, api) {
       el.addEventListener('click', (e) => {
         const b = e.target.closest('[data-preset]');
@@ -589,8 +599,8 @@ function restSheet(current) {
       });
     },
     actions: [
-      { label: 'Annuler', value: null },
-      { label: 'Valider', kind: 'primary', handler: (el) => Math.max(5, Math.round(calc.parseNum(formData(el).sec) || current)) },
+      { label: t('Annuler'), value: null },
+      { label: t('Valider'), kind: 'primary', handler: (el) => Math.max(5, Math.round(calc.parseNum(formData(el).sec) || current)) },
     ],
   });
 }
@@ -608,8 +618,8 @@ export function textSheet(title, value, multiline = false) {
       });
     },
     actions: [
-      { label: 'Annuler', value: null },
-      { label: 'Enregistrer', kind: 'primary', handler: (el) => formData(el).v },
+      { label: t('Annuler'), value: null },
+      { label: t('Enregistrer'), kind: 'primary', handler: (el) => formData(el).v },
     ],
   });
 }
@@ -623,13 +633,13 @@ function toLocalInput(iso) {
 function dateSheet(w, live) {
   const dur = w.ended_at ? Math.round((Date.parse(w.ended_at) - Date.parse(w.started_at)) / 60000) : null;
   return openSheet({
-    title: 'Date et durée',
-    body: `<label class="field"><span>Début</span><input type="datetime-local" name="start" value="${toLocalInput(w.started_at)}"></label>
-      ${live ? '' : `<label class="field"><span>Durée (minutes)</span><input name="dur" inputmode="numeric" value="${dur ?? ''}"></label>`}`,
+    title: t('Date et durée'),
+    body: `<label class="field"><span>${t('Début')}</span><input type="datetime-local" name="start" value="${toLocalInput(w.started_at)}"></label>
+      ${live ? '' : `<label class="field"><span>${t('Durée (minutes)')}</span><input name="dur" inputmode="numeric" value="${dur ?? ''}"></label>`}`,
     actions: [
-      { label: 'Annuler', value: null },
+      { label: t('Annuler'), value: null },
       {
-        label: 'Enregistrer',
+        label: t('Enregistrer'),
         kind: 'primary',
         handler(el) {
           const f = formData(el);

@@ -4,6 +4,7 @@ import * as calc from '../calc.js';
 import { esc, icon } from '../ui.js';
 import { lineChart, barList, columnChart } from '../charts.js';
 import { setText } from './common.js';
+import { t, tp } from '../i18n.js';
 
 const RANGES = [
   ['3m', '3 mois', 91],
@@ -22,8 +23,8 @@ export function savePrefs() {
 export { prefs, RANGES };
 
 export function segmented(name, options, current) {
-  return `<div class="seg" role="radiogroup" aria-label="${esc(name)}">${options
-    .map(([v, label]) => `<button role="radio" aria-checked="${v === current}" data-seg="${esc(name)}" data-v="${v}">${esc(label)}</button>`)
+  return `<div class="seg" role="radiogroup" aria-label="${esc(t(name))}">${options
+    .map(([v, label]) => `<button role="radio" aria-checked="${v === current}" data-seg="${esc(name)}" data-v="${v}">${esc(t(label))}</button>`)
     .join('')}</div>`;
 }
 
@@ -37,48 +38,48 @@ export function renderProgress(view, ctx) {
     .sort((a, b) => Date.parse(b.b.last) - Date.parse(a.b.last));
 
   view.innerHTML = `
-    ${ctx.pageHead('Progrès')}
+    ${ctx.pageHead(t('Progrès'))}
     <div class="p-grid">
       <section class="block">
-        <h2 class="block-title">Cette semaine</h2>
+        <h2 class="block-title">${t('Cette semaine')}</h2>
         <div class="figures">
-          <div class="figure"><span class="fig-value">${week.count}</span><span class="fig-label">séance${week.count > 1 ? 's' : ''}</span></div>
-          <div class="figure"><span class="fig-value">${week.sets}</span><span class="fig-label">séries</span></div>
-          <div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(week.tonnage))}</span><span class="fig-label">soulevés</span></div>
+          <div class="figure"><span class="fig-value">${week.count}</span><span class="fig-label">${tp(week.count, 'séance', 'séances')}</span></div>
+          <div class="figure"><span class="fig-value">${week.sets}</span><span class="fig-label">${tp(week.sets, 'série', 'séries')}</span></div>
+          <div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(week.tonnage))}</span><span class="fig-label">${t('soulevés')}</span></div>
         </div>
       </section>
       <section class="block">
-        <h2 class="block-title">Séances par semaine</h2>
-        <p class="block-sub">12 dernières semaines, repérées par la date du lundi. Survole une colonne pour le détail.</p>
+        <h2 class="block-title">${t('Séances par semaine')}</h2>
+        <p class="block-sub">${t('12 dernières semaines, repérées par la date du lundi. Survole une colonne pour le détail.')}</p>
         <div data-weeks></div>
       </section>
       <section class="block">
-        <h2 class="block-title">Séries par groupe musculaire</h2>
-        <p class="block-sub">7 derniers jours, séries de travail cochées. Repère courant : 10 à 20 séries par semaine et par muscle pour progresser.</p>
+        <h2 class="block-title">${t('Séries par groupe musculaire')}</h2>
+        <p class="block-sub">${t('7 derniers jours, séries de travail cochées. Repère courant : 10 à 20 séries par semaine et par muscle pour progresser.')}</p>
         <div data-muscles></div>
       </section>
       <section class="block">
-        <h2 class="block-title">Exercices</h2>
+        <h2 class="block-title">${t('Exercices')}</h2>
         ${exercises.length ? `<div class="list">${exercises.map(({ ex, b }) => `
           <a class="list-row" href="#/progres/${ex.id}">
-            <span class="list-main">${esc(ex.name)}<small>${b.sessions} séance${b.sessions > 1 ? 's' : ''}, dernière ${esc(calc.relDays(b.last))}</small></span>
+            <span class="list-main">${esc(ex.name)}<small>${esc(tp(b.sessions, '{n} séance, dernière {when}', '{n} séances, dernière {when}', { when: calc.relDays(b.last) }))}</small></span>
             <span class="list-value">${b.mode === 'duree'
-              ? `${b.maxT ? esc(calc.fmtSec(b.maxT.value)) : '–'}<small>durée max</small>`
+              ? `${b.maxT ? esc(calc.fmtSec(b.maxT.value)) : '–'}<small>${t('durée max')}</small>`
               : b.mode === 'cardio'
-                ? `${b.dist ? `${esc(calc.fmt1(b.dist.value))} km` : '–'}<small>distance max</small>`
-                : `${b.e1rm ? `${esc(calc.fmt0(b.e1rm.value))} kg` : '–'}<small>1RM estimé</small>`}</span>
+                ? `${b.dist ? `${esc(calc.fmt1(b.dist.value))} km` : '–'}<small>${t('distance max')}</small>`
+                : `${b.e1rm ? `${esc(calc.fmt0(b.e1rm.value))} kg` : '–'}<small>${t('1RM estimé')}</small>`}</span>
             ${icon('chevron', 'row-chevron')}
-          </a>`).join('')}</div>` : '<p class="empty">Termine une séance pour voir ta progression ici.</p>'}
+          </a>`).join('')}</div>` : `<p class="empty">${t('Termine une séance pour voir ta progression ici.')}</p>`}
       </section>
     </div>`;
 
   columnChart(view.querySelector('[data-weeks]'), perWeek.map((p) => ({
     label: String(p.week.getDate()),
     value: p.count,
-    title: `Semaine du ${calc.fmtShort(p.week)} : ${p.count} séance${p.count > 1 ? 's' : ''}`,
+    title: tp(p.count, 'Semaine du {date} : {n} séance', 'Semaine du {date} : {n} séances', { date: calc.fmtShort(p.week) }),
   })));
-  barList(view.querySelector('[data-muscles]'), muscles.map(([m, n]) => ({ label: m, value: n })), {
-    empty: 'Aucune série cochée ces 7 derniers jours.',
+  barList(view.querySelector('[data-muscles]'), muscles.map(([m, n]) => ({ label: calc.muscleLabel(m), value: n })), {
+    empty: t('Aucune série cochée ces 7 derniers jours.'),
   });
 }
 
@@ -122,14 +123,14 @@ function metricUnit(metric) {
 
 function sessionText(ex, h) {
   if (h.mode === 'duree') return h.sets.map((x) => calc.fmtSec(x.t));
-  if (h.mode === 'cardio') return h.sets.map((x) => [x.d ? `${calc.fmt(x.d)} km` : '', x.t ? calc.fmtSec(x.t) : ''].filter(Boolean).join(' en '));
+  if (h.mode === 'cardio') return h.sets.map((x) => [x.d ? `${calc.fmt(x.d)} km` : '', x.t ? calc.fmtSec(x.t) : ''].filter(Boolean).join(t(' en ')));
   return h.sets.map((x) => setText(ex, x.w, x.r, h.base).replace(' kg', ''));
 }
 
 export function renderExerciseProgress(view, ctx, id) {
   const ex = store.getAny('exercises', id);
   if (!ex) {
-    view.innerHTML = `${ctx.pageHead('Exercice', { back: '/progres' })}<p class="empty">Exercice introuvable.</p>`;
+    view.innerHTML = `${ctx.pageHead(t('Exercice'), { back: '/progres' })}<p class="empty">${t('Exercice introuvable.')}</p>`;
     return;
   }
   const b = calc.bests(id);
@@ -141,40 +142,42 @@ export function renderExerciseProgress(view, ctx, id) {
   const figures = () => {
     if (!b) return '';
     const f = (value, unit, label) => `<div class="figure"><span class="fig-value">${value}${unit ? `<small>${unit}</small>` : ''}</span><span class="fig-label">${label}</span></div>`;
-    const sessions = f(b.sessions, '', `séance${b.sessions > 1 ? 's' : ''} depuis le ${esc(calc.fmtShort(b.first))}`);
+    const sessions = f(b.sessions, '', esc(tp(b.sessions, 'séance depuis le {date}', 'séances depuis le {date}', { date: calc.fmtShort(b.first) })));
     if (mode === 'duree') {
       return `<div class="figures">
-        ${f(b.maxT ? esc(calc.fmtSec(b.maxT.value)) : '–', '', `effort le plus long${b.maxT ? `, ${esc(calc.fmtShort(b.maxT.date))}` : ''}`)}
-        ${f(b.totalT ? esc(calc.fmtSec(b.totalT.value)) : '–', '', 'meilleur total en une séance')}
+        ${f(b.maxT ? esc(calc.fmtSec(b.maxT.value)) : '–', '', `${t('effort le plus long')}${b.maxT ? `, ${esc(calc.fmtShort(b.maxT.date))}` : ''}`)}
+        ${f(b.totalT ? esc(calc.fmtSec(b.totalT.value)) : '–', '', t('meilleur total en une séance'))}
         ${sessions}</div>`;
     }
     if (mode === 'cardio') {
       return `<div class="figures">
-        ${f(b.dist ? esc(calc.fmt1(b.dist.value)) : '–', 'km', `plus longue distance${b.dist ? `, ${esc(calc.fmtShort(b.dist.date))}` : ''}`)}
-        ${f(b.pace ? esc(calc.fmtPace(b.pace.value)) : '–', '', 'meilleure allure')}
+        ${f(b.dist ? esc(calc.fmt1(b.dist.value)) : '–', 'km', `${t('plus longue distance')}${b.dist ? `, ${esc(calc.fmtShort(b.dist.date))}` : ''}`)}
+        ${f(b.pace ? esc(calc.fmtPace(b.pace.value)) : '–', '', t('meilleure allure'))}
         ${sessions}</div>`;
     }
     return `<div class="figures">
-      ${f(b.e1rm ? esc(calc.fmt1(b.e1rm.value)) : '–', 'kg', `meilleur 1RM estimé${b.e1rm ? `, ${esc(calc.fmtShort(b.e1rm.date))}` : ''}`)}
-      ${f(b.load ? esc(calc.fmt(b.load.value)) : '–', 'kg', `charge max${b.load?.set ? `, ${b.load.set.r} rep${b.load.set.r > 1 ? 's' : ''}` : ''}`)}
-      ${f(b.tonnage ? esc(calc.fmtTonnage(b.tonnage.value)) : '–', '', 'meilleur volume en une séance')}
+      ${f(b.e1rm ? esc(calc.fmt1(b.e1rm.value)) : '–', 'kg', `${t('meilleur 1RM estimé')}${b.e1rm ? `, ${esc(calc.fmtShort(b.e1rm.date))}` : ''}`)}
+      ${f(b.load ? esc(calc.fmt(b.load.value)) : '–', 'kg', `${t('charge max')}${b.load?.set ? `, ${tp(b.load.set.r, '{n} rep', '{n} reps')}` : ''}`)}
+      ${f(b.tonnage ? esc(calc.fmtTonnage(b.tonnage.value)) : '–', '', t('meilleur volume en une séance'))}
       ${sessions}</div>`;
   };
 
   const draw = () => {
     const metric = metrics.find((m) => m[0] === prefs.metric) ? prefs.metric : metrics[0][0];
-    const [, metricName, metricHelp] = metrics.find((m) => m[0] === metric);
+    const [, metricNameFr, metricHelpFr] = metrics.find((m) => m[0] === metric);
+    const metricName = t(metricNameFr);
+    const metricHelp = t(metricHelpFr);
     const range = RANGES.find((r) => r[0] === prefs.range) || RANGES[1];
     const since = range[2] ? Date.now() - range[2] * 86400000 : 0;
     const pts = hist.filter((h) => Date.parse(h.date) >= since);
     const yf = metricFormat(metric);
-    const summaryHead = { reps: '1RM est.', duree: 'Max', cardio: 'Allure' }[mode];
+    const summaryHead = t({ reps: '1RM est.', duree: 'Max', cardio: 'Allure' }[mode]);
     const summaryVal = (h) => (mode === 'reps' ? (h.bestE1rm ? calc.fmt1(h.bestE1rm) : '–') : mode === 'duree' ? calc.fmtSec(h.maxT) : calc.fmtPace(h.pace));
-    const totalHead = { reps: 'Volume', duree: 'Total', cardio: 'Distance' }[mode];
+    const totalHead = t({ reps: 'Volume', duree: 'Total', cardio: 'Distance' }[mode]);
     const totalVal = (h) => (mode === 'reps' ? calc.fmtTonnage(h.tonnage) : mode === 'duree' ? calc.fmtSec(h.totalT) : `${calc.fmt1(h.dist)} km`);
 
     view.innerHTML = `
-      ${ctx.pageHead(ex.name, { back: '/progres', sub: esc([ex.muscle, calc.EQUIPMENT[ex.equipment]].filter(Boolean).join(', ')) })}
+      ${ctx.pageHead(ex.name, { back: '/progres', sub: esc([ex.muscle && calc.muscleLabel(ex.muscle), calc.EQUIPMENT[ex.equipment] && calc.equipLabel(ex.equipment)].filter(Boolean).join(', ')) })}
       ${figures()}
       <section class="block">
         <div class="chart-controls">
@@ -182,19 +185,19 @@ export function renderExerciseProgress(view, ctx, id) {
           ${segmented('Période', RANGES.map((r) => [r[0], r[1]]), prefs.range)}
         </div>
         <h2 class="block-title">${esc(metricName)}${metricUnit(metric)}</h2>
-        <p class="block-sub">${esc(metricHelp)}${pdc && mode === 'reps' ? ' Poids du corps inclus.' : ''}</p>
+        <p class="block-sub">${esc(metricHelp)}${pdc && mode === 'reps' ? ` ${t('Poids du corps inclus.')}` : ''}</p>
         <div class="chart-box" data-chart></div>
       </section>
       <section class="block">
-        <h2 class="block-title">Séances</h2>
+        <h2 class="block-title">${t('Séances')}</h2>
         ${hist.length ? `<div class="table-wrap"><table class="table">
-          <thead><tr><th scope="col">Date</th><th scope="col">Séries</th><th scope="col" class="num">${summaryHead}</th><th scope="col" class="num">${totalHead}</th></tr></thead>
+          <thead><tr><th scope="col">${t('Date')}</th><th scope="col">${t('Séries')}</th><th scope="col" class="num">${summaryHead}</th><th scope="col" class="num">${totalHead}</th></tr></thead>
           <tbody>${[...hist].reverse().map((h) => `<tr>
             <td><a href="#/historique/${h.workoutId}">${esc(calc.fmtDay(h.date))}</a></td>
             <td>${sessionText(ex, h).map(esc).join('<br>')}</td>
             <td class="num">${esc(summaryVal(h))}</td>
             <td class="num">${esc(totalVal(h))}</td></tr>`).join('')}</tbody>
-        </table></div>` : '<p class="empty">Aucune séance terminée avec cet exercice.</p>'}
+        </table></div>` : `<p class="empty">${t('Aucune séance terminée avec cet exercice.')}</p>`}
       </section>`;
 
     lineChart(view.querySelector('[data-chart]'), {
@@ -205,7 +208,7 @@ export function renderExerciseProgress(view, ctx, id) {
         points: pts.filter((h) => metricValue(h, metric) != null).map((h) => ({ t: Date.parse(h.date), y: metricValue(h, metric) })),
       }],
       yFormat: yf,
-      empty: hist.length ? 'Aucune séance sur cette période.' : 'Pas encore de séance terminée avec cet exercice.',
+      empty: hist.length ? t('Aucune séance sur cette période.') : t('Pas encore de séance terminée avec cet exercice.'),
     });
   };
 

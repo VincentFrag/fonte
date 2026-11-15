@@ -4,9 +4,10 @@
 import * as store from './store.js';
 import * as calc from './calc.js';
 import { icon } from './ui.js';
+import { t } from './i18n.js';
 
 const isTimed = (it) => calc.itemMode(it, store.getAny('exercises', it.exercise_id)) === 'duree';
-const nameOf = (it) => store.getAny('exercises', it.exercise_id)?.name || it.name || 'Exercice';
+const nameOf = (it) => store.getAny('exercises', it.exercise_id)?.name || it.name || t('Exercice');
 
 // Construit la suite d'étapes à partir de l'exercice startUid (inclus) jusqu'à la fin de la séance.
 export function buildSteps(w, startUid) {
@@ -59,11 +60,11 @@ export function runIntervals(ctx, w, startUid, { onStep, onEnd }) {
   el.className = 'timer-wrap';
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-modal', 'true');
-  el.setAttribute('aria-label', "Minuteur d'intervalles");
+  el.setAttribute('aria-label', t('Minuteur d’intervalles'));
   el.innerHTML = `
     <div class="timer-top">
       <span class="timer-round" data-round></span>
-      <button class="timer-close" data-stop>Arrêter</button>
+      <button class="timer-close" data-stop>${t('Arrêter')}</button>
     </div>
     <div class="timer-main">
       <p class="timer-phase" data-phase></p>
@@ -73,8 +74,8 @@ export function runIntervals(ctx, w, startUid, { onStep, onEnd }) {
       <p class="timer-next" data-next></p>
     </div>
     <div class="timer-actions">
-      <button class="timer-btn-big" data-pause>${icon('pause')}<span>Pause</span></button>
-      <button class="timer-btn-big ghost" data-skip>${icon('skip')}<span>Passer</span></button>
+      <button class="timer-btn-big" data-pause>${icon('pause')}<span>${t('Pause')}</span></button>
+      <button class="timer-btn-big ghost" data-skip>${icon('skip')}<span>${t('Passer')}</span></button>
     </div>`;
   document.body.appendChild(el);
   document.body.classList.add('timer-open');
@@ -88,17 +89,17 @@ export function runIntervals(ctx, w, startUid, { onStep, onEnd }) {
 
   const describe = (st) => {
     if (!st) return '';
-    return `${nameOf(st.item)}${st.rounds > 1 ? `, ${st.circuit ? 'tour' : 'série'} ${st.round}/${st.rounds}` : ''}`;
+    return `${nameOf(st.item)}${st.rounds > 1 ? `, ${t(st.circuit ? 'tour {r}/{n}' : 'série {r}/{n}', { r: st.round, n: st.rounds })}` : ''}`;
   };
 
   function paint() {
     const st = steps[idx];
     el.dataset.phase = st.kind;
-    $('[data-phase]').textContent = { ready: 'Prépare-toi', work: 'Effort', rest: 'Récup' }[st.kind];
-    $('[data-ex]').textContent = st.kind === 'work' ? nameOf(st.item) : st.next ? `Ensuite : ${nameOf(st.next.item)}` : '';
-    $('[data-round]').textContent = st.kind === 'work' && st.rounds > 1 ? `${st.circuit ? 'Tour' : 'Série'} ${st.round} / ${st.rounds}` : '';
+    $('[data-phase]').textContent = t({ ready: 'Prépare-toi', work: 'Effort', rest: 'Récup' }[st.kind]);
+    $('[data-ex]').textContent = st.kind === 'work' ? nameOf(st.item) : st.next ? t('Ensuite : {name}', { name: nameOf(st.next.item) }) : '';
+    $('[data-round]').textContent = st.kind === 'work' && st.rounds > 1 ? t(st.circuit ? 'Tour {r} / {n}' : 'Série {r} / {n}', { r: st.round, n: st.rounds }) : '';
     const after = st.kind === 'work' ? steps.slice(idx + 1).find((s) => s.kind === 'work') : null;
-    $('[data-next]').textContent = st.kind === 'work' ? (after ? `Après : ${describe(after)}` : 'Dernier effort') : '';
+    $('[data-next]').textContent = st.kind === 'work' ? (after ? t('Après : {what}', { what: describe(after) }) : t('Dernier effort')) : '';
   }
 
   function completeStep(st) {
@@ -117,8 +118,8 @@ export function runIntervals(ctx, w, startUid, { onStep, onEnd }) {
     if (done) {
       ctx.sound?.done();
       el.dataset.phase = 'done';
-      $('[data-phase]').textContent = 'Terminé';
-      $('[data-ex]').textContent = 'Bien joué.';
+      $('[data-phase]').textContent = t('Terminé');
+      $('[data-ex]').textContent = t('Bien joué.');
       $('[data-time]').textContent = '';
       $('[data-next]').textContent = '';
       $('[data-round]').textContent = '';
@@ -180,11 +181,11 @@ export function runIntervals(ctx, w, startUid, { onStep, onEnd }) {
       if (pausedAt) {
         stepStart += Date.now() - pausedAt;
         pausedAt = null;
-        b.innerHTML = `${icon('pause')}<span>Pause</span>`;
+        b.innerHTML = `${icon('pause')}<span>${t('Pause')}</span>`;
         el.classList.remove('is-paused');
       } else {
         pausedAt = Date.now();
-        b.innerHTML = `${icon('play')}<span>Reprendre</span>`;
+        b.innerHTML = `${icon('play')}<span>${t('Reprendre')}</span>`;
         el.classList.add('is-paused');
       }
       return;
@@ -195,7 +196,7 @@ export function runIntervals(ctx, w, startUid, { onStep, onEnd }) {
         stepStart += Date.now() - pausedAt;
         pausedAt = null;
         el.classList.remove('is-paused');
-        el.querySelector('[data-pause]').innerHTML = `${icon('pause')}<span>Pause</span>`;
+        el.querySelector('[data-pause]').innerHTML = `${icon('pause')}<span>${t('Pause')}</span>`;
       }
       // Un effort passé n'est pas coché ; une récup passée enchaîne simplement
       if (steps[idx].kind === 'work') steps[idx].skipped = true;

@@ -4,6 +4,7 @@ import * as calc from '../calc.js';
 import { esc, icon, toast, confirmSheet } from '../ui.js';
 import { lineChart } from '../charts.js';
 import { prefs, savePrefs, segmented, RANGES } from './progress.js';
+import { t, numInput } from '../i18n.js';
 
 export function renderBody(view, ctx) {
   let showAll = false;
@@ -29,45 +30,45 @@ export function renderBody(view, ctx) {
     const shown = showAll ? list : list.slice(0, 10);
 
     view.innerHTML = `
-      ${ctx.pageHead('Poids')}
+      ${ctx.pageHead(t('Poids'))}
       <form class="bw-form block" data-form>
-        <label class="field bw-day"><span>Date</span><input type="date" name="day" value="${today}" max="${today}"></label>
-        <label class="field bw-weight"><span>Poids (kg)</span>
-          <input name="weight" inputmode="decimal" autocomplete="off" required value="${esc(todayEntry ? String(todayEntry.weight).replace('.', ',') : last ? String(last.weight).replace('.', ',') : '')}"></label>
-        <button class="btn primary" type="submit">${todayEntry ? 'Mettre à jour' : 'Enregistrer'}</button>
+        <label class="field bw-day"><span>${t('Date')}</span><input type="date" name="day" value="${today}" max="${today}"></label>
+        <label class="field bw-weight"><span>${t('Poids (kg)')}</span>
+          <input name="weight" inputmode="decimal" autocomplete="off" required value="${esc(todayEntry ? numInput(todayEntry.weight) : last ? numInput(last.weight) : '')}"></label>
+        <button class="btn primary" type="submit">${todayEntry ? t('Mettre à jour') : t('Enregistrer')}</button>
       </form>
-      <p class="block-sub bw-tip">Pèse-toi idéalement le matin, à jeun, dans les mêmes conditions. La moyenne sur 7 jours lisse les variations d'eau et de digestion.</p>
+      <p class="block-sub bw-tip">${t('Pèse-toi idéalement le matin, à jeun, dans les mêmes conditions. La moyenne sur 7 jours lisse les variations d’eau et de digestion.')}</p>
       ${last ? `<div class="figures">
-        <div class="figure"><span class="fig-value">${esc(calc.fmt1(last.avg))}<small>kg</small></span><span class="fig-label">moyenne 7 jours</span></div>
-        <div class="figure"><span class="fig-value">${trend == null ? '–' : esc(calc.fmtSigned(trend, 2))}<small>kg</small></span><span class="fig-label">par semaine, tendance sur 4 semaines</span></div>
-        <div class="figure"><span class="fig-value">${avg30 == null ? '–' : esc(calc.fmtSigned(avg30))}<small>kg</small></span><span class="fig-label">en 30 jours (moyenne)</span></div>
+        <div class="figure"><span class="fig-value">${esc(calc.fmt1(last.avg))}<small>kg</small></span><span class="fig-label">${t('moyenne 7 jours')}</span></div>
+        <div class="figure"><span class="fig-value">${trend == null ? '–' : esc(calc.fmtSigned(trend, 2))}<small>kg</small></span><span class="fig-label">${t('par semaine, tendance sur 4 semaines')}</span></div>
+        <div class="figure"><span class="fig-value">${avg30 == null ? '–' : esc(calc.fmtSigned(avg30))}<small>kg</small></span><span class="fig-label">${t('en 30 jours (moyenne)')}</span></div>
       </div>` : ''}
       <section class="block">
         <div class="chart-controls">${segmented('Période', RANGES.map((r) => [r[0], r[1]]), prefs.bwRange)}</div>
-        <h2 class="block-title">Évolution (kg)</h2>
+        <h2 class="block-title">${t('Évolution (kg)')}</h2>
         <div class="legend" aria-hidden="${pts.length ? 'false' : 'true'}">
-          <span><span class="key s2"></span>Pesée</span><span><span class="key s1 line"></span>Moyenne 7 jours</span>
+          <span><span class="key s2"></span>${t('Pesée')}</span><span><span class="key s1 line"></span>${t('Moyenne 7 jours')}</span>
         </div>
         <div class="chart-box" data-chart></div>
       </section>
       <section class="block">
-        <h2 class="block-title">Pesées</h2>
+        <h2 class="block-title">${t('Pesées')}</h2>
         ${list.length ? `<div class="list bw-list">${shown.map((p) => `
           <div class="list-row static">
             <span class="list-main">${esc(calc.fmtDay(calc.dayToDate(p.day)))}</span>
             <span class="list-value">${esc(calc.fmt(p.weight))} kg</span>
-            <button class="icon-btn" data-del="${p.day}" aria-label="Supprimer la pesée du ${esc(calc.fmtShort(calc.dayToDate(p.day)))}">${icon('trash')}</button>
+            <button class="icon-btn" data-del="${p.day}" aria-label="${esc(t('Supprimer la pesée du {date}', { date: calc.fmtShort(calc.dayToDate(p.day)) }))}">${icon('trash')}</button>
           </div>`).join('')}</div>
-          ${list.length > 10 ? `<button class="btn ghost block" data-all>${showAll ? 'Afficher moins' : `Afficher les ${list.length} pesées`}</button>` : ''}` : '<p class="empty">Aucune pesée pour l’instant.</p>'}
+          ${list.length > 10 ? `<button class="btn ghost block" data-all>${showAll ? t('Afficher moins') : t('Afficher les {n} pesées', { n: list.length })}</button>` : ''}` : `<p class="empty">${t('Aucune pesée pour l’instant.')}</p>`}
       </section>`;
 
     lineChart(view.querySelector('[data-chart]'), {
       series: [
-        { name: 'Pesée', style: 'dots', cls: 's2', points: pts.map((p) => ({ t: p.t, y: p.weight })) },
-        { name: 'Moyenne 7 jours', style: 'line', cls: 's1', points: pts.map((p) => ({ t: p.t, y: Math.round(p.avg * 100) / 100 })) },
+        { name: t('Pesée'), style: 'dots', cls: 's2', points: pts.map((p) => ({ t: p.t, y: p.weight })) },
+        { name: t('Moyenne 7 jours'), style: 'line', cls: 's1', points: pts.map((p) => ({ t: p.t, y: Math.round(p.avg * 100) / 100 })) },
       ],
       yFormat: (v) => calc.fmt1(v),
-      empty: 'Ajoute ta première pesée pour voir la courbe.',
+      empty: t('Ajoute ta première pesée pour voir la courbe.'),
     });
   };
 
@@ -77,12 +78,12 @@ export function renderBody(view, ctx) {
     const day = f.day.value || calc.localDay();
     const weight = calc.parseNum(f.weight.value);
     if (!weight || weight < 20 || weight > 400) {
-      toast('Indique un poids entre 20 et 400 kg.');
+      toast(t('Indique un poids entre 20 et 400 kg.'));
       f.weight.focus();
       return;
     }
     store.save('bodyweights', { day, weight: Math.round(weight * 100) / 100 }, { silent: true });
-    toast('Pesée enregistrée.');
+    toast(t('Pesée enregistrée.'));
     draw();
   });
 
@@ -101,7 +102,7 @@ export function renderBody(view, ctx) {
     }
     const d = e.target.closest('[data-del]');
     if (d) {
-      const ok = await confirmSheet('Supprimer la pesée', `Supprimer la pesée du ${calc.fmtFull(calc.dayToDate(d.dataset.del))} ?`, { ok: 'Supprimer', danger: true });
+      const ok = await confirmSheet(t('Supprimer la pesée'), t('Supprimer la pesée du {date} ?', { date: calc.fmtFull(calc.dayToDate(d.dataset.del)) }), { ok: t('Supprimer'), danger: true });
       if (ok) {
         store.remove('bodyweights', d.dataset.del);
         draw();

@@ -1,6 +1,8 @@
 # Fonte : carnet de musculation
 
-Application web installable (PWA) pour téléphone, tablette et ordinateur. Elle permet de :
+[English version](README.en.md)
+
+Application web installable (PWA) pour téléphone, tablette et ordinateur, en français et en anglais. Elle permet de :
 
 - partir de **programmes tout faits** (full body, 5×5, haut / bas, push / pull / legs, split, poids du corps, HIIT Tabata, circuit, cardio, gainage) ou créer les tiens ;
 - saisir ses **séances** rapidement, avec les performances de la fois précédente en regard ;
@@ -87,6 +89,10 @@ L'app se connecte par **email et mot de passe**. Tu crées ton compte directemen
 Sur chaque appareil, ouvre **Plus > Compte et synchronisation** et connecte-toi avec l'email et le mot de passe de l'étape 4. La connexion reste active ensuite.
 
 La pastille en haut à droite indique l'état de la synchro : **Synchronisé**, **Hors ligne**, **Non connecté**… Si elle affiche **Sur cet appareil**, l'app ne trouve pas ta configuration : vérifie `config.js` (étape 5).
+
+### Langue
+
+Fonte suit la langue de ton appareil : français si l'appareil est en français, anglais sinon. Pour choisir, va dans **Plus > Réglages > Langue**. Les exercices et programmes déjà créés gardent leur nom ; les nouveaux sont créés dans la langue choisie.
 
 ---
 
@@ -182,7 +188,7 @@ Les composants tiers (bibliothèque Supabase, police Archivo) gardent leur propr
 
 ## Contribuer
 
-Une idée, un bug, une amélioration ? Tout est expliqué dans [CONTRIBUTING.md](CONTRIBUTING.md) : signaler un problème dans l'onglet **Issues**, ou proposer une modification avec une **Pull request**.
+Une idée, un bug, une amélioration ? Tout est expliqué dans [CONTRIBUTING.md](CONTRIBUTING.md) ([in English](CONTRIBUTING.en.md)) : signaler un problème dans l'onglet **Issues**, ou proposer une modification avec une **Pull request**.
 
 ---
 
@@ -194,12 +200,17 @@ Une idée, un bug, une amélioration ? Tout est expliqué dans [CONTRIBUTING.md]
 - Pour tester en local, ouvrir `index.html` en double-cliquant ne fonctionne pas (les navigateurs bloquent les modules JavaScript en `file://`). Dans le dossier, lance `python3 -m http.server 8000` et ouvre `http://localhost:8000`.
 - Si tu ajoutes une colonne à une table, ajoute-la dans `supabase/schema.sql` **et** dans la liste `columns` de la table dans `js/store.js`.
 
+### Traductions
+
+Le texte français sert de clé : dans le code, `t('Séance')` affiche « Workout » en anglais. Les pluriels passent par `tp(n, 'un', 'plusieurs')`, et les paramètres s'écrivent `{nom}`. Les traductions anglaises sont dans `js/i18n-en.js`. Si une clé manque, l'app affiche le français et ajoute la clé à `window.__i18nMissing` (pratique à vérifier depuis la console du navigateur). Pense aussi à mettre à jour `README.en.md` quand tu modifies ce guide.
+
 ### Organisation du code
 
 ```
 fonte/
 ├── LICENSE                 Licence (PolyForm Noncommercial 1.0.0)
-├── CONTRIBUTING.md         Comment proposer une idée ou une modification
+├── README.en.md           Ce guide, en anglais
+├── CONTRIBUTING(.en).md    Comment proposer une idée ou une modification
 ├── THIRD_PARTY_NOTICES.md  Licences des composants tiers
 ├── index.html              Page unique de l'app
 ├── config.js               URL et clé publique Supabase
@@ -208,6 +219,8 @@ fonte/
 ├── css/app.css             Styles (clair, sombre, mobile, tablette, ordinateur)
 ├── js/
 │   ├── app.js              Navigation, minuteur de repos, mises à jour
+│   ├── i18n.js             Choix de la langue et fonctions de traduction
+│   ├── i18n-en.js          Traductions anglaises
 │   ├── store.js            Stockage local (IndexedDB)
 │   ├── sync.js             Synchronisation et connexion Supabase
 │   ├── calc.js             1RM, records, progression, poids de corps, disques
@@ -218,7 +231,7 @@ fonte/
 │   └── views/              Un fichier par écran
 ├── supabase/schema.sql     Tables, synchro et règles de sécurité
 ├── supabase/migration-*.sql  Mises à jour de la base pour les installations existantes
-├── docs/tutos/             Tutoriels vidéo (MP4 pour l'app, GIF pour ce guide)
+├── docs/tutos/             Tutoriels vidéo (MP4 pour l'app, GIF pour ce guide ; anglais dans docs/tutos/en/)
 ├── vendor/supabase.js      Bibliothèque Supabase, copiée localement
 ├── fonts/                  Police Archivo (licence OFL)
 └── icons/                  Icônes de l'app
