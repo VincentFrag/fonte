@@ -1,146 +1,181 @@
 # Fonte : carnet de musculation
 
-Application web installable (PWA) pour iPhone, tablette Android et ordinateur. Elle permet de :
+Application web installable (PWA) pour téléphone, tablette et ordinateur. Elle permet de :
 
 - préparer des **programmes** (exercices, séries, fourchette de répétitions, repos) ;
 - saisir ses **séances** rapidement, avec les performances de la fois précédente en regard ;
 - recevoir une **proposition de charge** quand toutes les séries atteignent le haut de la fourchette (double progression) ;
-- voir les **disques à charger** de chaque côté de la barre ;
+- choisir la **barre** de chaque exercice et voir les **disques à charger** de chaque côté ;
 - lancer un **minuteur de repos** automatique à chaque série cochée ;
 - repérer les **records** (1RM estimé, formule d'Epley) ;
 - suivre la **progression** par exercice et les **séries par groupe musculaire** ;
 - noter son **poids de corps**, avec moyenne sur 7 jours et tendance hebdomadaire ;
-- **synchroniser** ses appareils via Supabase, tout en continuant à fonctionner **hors connexion**.
+- **synchroniser** ses appareils, tout en continuant à fonctionner **hors connexion**.
 
-Durée totale de mise en route : 20 à 30 minutes, une seule fois.
+Chaque personne qui installe Fonte a **sa propre copie** et **sa propre base de données**. Personne d'autre n'a accès à tes données.
 
 ---
 
-## Étape 1 : mettre le site en ligne sur GitHub Pages
+## Ce qu'il te faut
 
-1. Connecte-toi sur [github.com](https://github.com). Si ce n'est pas déjà fait, active la double authentification : **Settings > Password and authentication > Two-factor authentication**. C'est la protection la plus importante, puisque ton compte peut modifier le site.
-2. Clique sur **+** en haut à droite, puis **New repository**.
-   - Nom : `fonte`
-   - Visibilité : **Public** (GitHub Pages gratuit exige un dépôt public ; le code ne contient aucun secret)
-   - Clique sur **Create repository**.
-3. Sur la page du dépôt vide, clique sur le lien **uploading an existing file**.
-4. Décompresse `fonte.zip` sur ton ordinateur, ouvre le dossier `fonte`, sélectionne **tout son contenu** (pas le dossier lui-même) et glisse-le dans la page GitHub. Les sous-dossiers (`css`, `js`, `icons`…) sont conservés.
-5. En bas, clique sur **Commit changes**.
-6. Va dans **Settings > Pages** :
-   - Source : **Deploy from a branch**
-   - Branch : **main**, dossier **/ (root)**, puis **Save**.
-7. Après une ou deux minutes, l'adresse apparaît en haut de cette page : `https://TON-PSEUDO.github.io/fonte/`. Ouvre-la : l'app fonctionne déjà, sans synchro (données sur l'appareil uniquement).
+- un compte [GitHub](https://github.com) (gratuit), pour héberger l'app ;
+- un compte [Supabase](https://supabase.com) (gratuit), pour la base de données et la synchro ;
+- environ 30 minutes, une seule fois. Rien à installer sur ton ordinateur.
 
-## Étape 2 : créer la base Supabase
+---
 
-1. Crée un compte sur [supabase.com](https://supabase.com) (connexion avec GitHub possible), puis **New project** :
+## Installation
+
+### 1. Copier le dépôt
+
+1. Connecte-toi à GitHub et active la double authentification si ce n'est pas déjà fait : **Settings > Password and authentication > Two-factor authentication**. Quiconque contrôle ton compte GitHub peut modifier ton app.
+2. Sur la page de ce dépôt, clique sur **Fork** (en haut à droite), puis sur **Create fork**. Tu peux garder le nom `fonte`.
+
+### 2. Mettre ton site en ligne
+
+1. Dans **ton** dépôt (`TON-PSEUDO/fonte`), va dans **Settings > Pages**.
+2. Source : **Deploy from a branch** ; Branch : **main**, dossier **/ (root)**, puis **Save**.
+3. Ouvre l'onglet **Actions**. S'il affiche un message du type « Workflows aren't being run on this forked repository », clique sur le bouton pour les activer. GitHub les désactive par défaut sur les copies de dépôt.
+4. Après une ou deux minutes, l'adresse de ton site apparaît dans **Settings > Pages** : `https://TON-PSEUDO.github.io/fonte/`.
+
+### 3. Créer la base de données
+
+1. Sur Supabase, clique sur **New project** :
    - Nom : `fonte`
    - Mot de passe de la base : génère-le et garde-le dans ton gestionnaire de mots de passe (l'app n'en a pas besoin)
-   - Région : **West EU (Paris)** ou la plus proche
+   - Région : la plus proche de chez toi
 2. Une fois le projet prêt, ouvre **SQL Editor**, clique sur **New query**, colle le contenu du fichier `supabase/schema.sql` et clique sur **Run**.
 3. Le résultat affiche un tableau de 4 lignes (`bodyweights`, `exercises`, `templates`, `workouts`). Vérifie que chacune indique `rls_active = true` et `regles = 1` : les tables sont créées et protégées.
 
-   Si Supabase affiche un avertissement **Potential issues detected** avant l'exécution, tu peux confirmer le lancement. Le script ne supprime aucune donnée. Les seules mentions de suppression sont `on delete cascade` (tes lignes disparaissent si ton compte est supprimé) et le droit `delete` accordé à ton compte connecté. La sécurité au niveau des lignes (RLS) est activée juste après chaque création de table, et le tableau final permet de le vérifier.
+Si Supabase affiche un avertissement **Potential issues detected** avant l'exécution, tu peux confirmer. Le script ne supprime aucune donnée : les seules mentions de suppression sont `on delete cascade` (tes lignes disparaissent si ton compte est supprimé) et le droit `delete` accordé aux utilisateurs connectés sur leurs propres lignes.
 
-## Étape 3 : créer ton compte et fermer les inscriptions
+### 4. Créer ton compte et fermer les inscriptions
 
-L'app se connecte par **email + mot de passe**. Tu crées ton compte toi-même dans Supabase : aucun email n'est envoyé, donc pas besoin de configurer de serveur d'envoi.
+L'app se connecte par **email et mot de passe**. Tu crées ton compte directement dans Supabase : aucun email n'est envoyé.
 
 1. Dans Supabase, ouvre **Authentication > Users**, puis **Add user > Create new user**.
 2. Saisis ton email et un mot de passe solide (génère-le avec ton gestionnaire de mots de passe).
 3. Coche **Auto Confirm User**, puis **Create user**.
-4. Ferme ensuite les inscriptions : **Authentication > Sign In / Providers**, désactive **Allow new users to sign up**, puis **Save**. L'adresse de l'app étant publique, personne d'autre ne pourra ainsi créer de compte sur ton projet. Ton compte continue de fonctionner normalement.
+4. Ferme les inscriptions : **Authentication > Sign In / Providers**, désactive **Allow new users to sign up**, puis **Save**. L'adresse de ton app est publique : sans ce réglage, n'importe qui pourrait créer un compte sur ton projet.
+5. Au même endroit, dans les réglages **Email**, impose une longueur minimale de mot de passe d'au moins 10 caractères.
 
-## Étape 4 : relier l'app à Supabase
+### 5. Relier l'app à ta base
 
 1. Récupère dans Supabase :
    - l'**URL du projet**, de la forme `https://abcdefghijkl.supabase.co` (bouton **Connect** en haut du tableau de bord, ou **Project Settings > Data API**) ;
    - la **clé publique** : **Project Settings > API Keys**, clé **Publishable** (`sb_publishable_…`). Si ton projet n'affiche que les anciennes clés, prends la clé **anon**.
 
    ⚠️ Ne copie **jamais** la clé `secret` ou `service_role` : elle contourne toutes les règles de sécurité.
-2. Sur GitHub, ouvre le fichier `config.js` dans ton dépôt, clique sur le crayon (**Edit this file**) et remplis :
+2. Sur GitHub, ouvre le fichier `config.js` de **ton** dépôt et clique sur le crayon (**Edit this file**).
+3. Remplace les deux valeurs entre apostrophes. Si le fichier contient déjà une URL et une clé, ce sont celles de la personne qui t'a partagé le dépôt : remplace-les toutes les deux.
    ```js
    window.FONTE_CONFIG = {
      supabaseUrl: 'https://abcdefghijkl.supabase.co',
      supabaseKey: 'sb_publishable_xxxxxxxxxxxx',
    };
    ```
-3. **Commit changes**. Le site se met à jour en une minute environ.
+   Garde bien les apostrophes et la virgule en fin de ligne.
+4. Clique sur **Commit changes**. Le site se met à jour en une à deux minutes.
 
-## Étape 5 : installer l'app et se connecter
+### 6. Installer l'app sur tes appareils
 
-**iPhone** : ouvre l'adresse dans **Safari**, touche le bouton **Partager**, puis **Sur l'écran d'accueil**. Lance Fonte depuis l'icône.
+- **iPhone / iPad** : ouvre l'adresse de ton site dans **Safari**, touche **Partager**, puis **Sur l'écran d'accueil**.
+- **Android** : ouvre l'adresse dans **Chrome**, menu **⋮**, puis **Installer l'application** (ou **Ajouter à l'écran d'accueil**).
+- **Ordinateur** : dans Chrome ou Edge, clique sur l'icône d'installation à droite de la barre d'adresse. Un simple favori fonctionne aussi.
 
-**Tablette Lenovo (Android)** : ouvre l'adresse dans **Chrome**, menu **⋮**, puis **Installer l'application** (ou **Ajouter à l'écran d'accueil**).
+Sur chaque appareil, ouvre **Plus > Compte et synchronisation** et connecte-toi avec l'email et le mot de passe de l'étape 4. La connexion reste active ensuite.
 
-**Ordinateur** : dans Chrome ou Edge, clique sur l'icône d'installation à droite de la barre d'adresse. Un simple favori fonctionne aussi.
-
-Sur chaque appareil : **Plus > Compte et synchronisation**, saisis l'email et le mot de passe créés à l'étape 3. Sur iPhone, le trousseau iCloud peut les enregistrer. La connexion reste active ensuite, il n'y a pas à la refaire.
+La pastille en haut à droite indique l'état de la synchro : **Synchronisé**, **Hors ligne**, **Non connecté**… Si elle affiche **Sur cet appareil**, l'app ne trouve pas ta configuration : vérifie `config.js` (étape 5).
 
 ---
 
-## Premiers pas dans l'app
+## Premiers pas
 
-1. **Plus > Exercices** : touche **Ajouter les exercices courants** (24 exercices de base), puis crée les tiens. Pour un exercice au poids du corps (tractions, dips), choisis le matériel **Poids du corps** : tu saisis le lest, et les calculs ajoutent ton dernier poids enregistré.
+1. **Plus > Exercices** : touche **Ajouter les exercices courants** pour démarrer avec une liste de base, puis crée les tiens.
 2. **Plus > Programmes** : crée tes séances types. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
 3. **Séance** : touche un programme pour démarrer. Les charges de la dernière fois sont pré-remplies. Coche ✓ chaque série terminée : le minuteur de repos démarre.
-4. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
-5. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
+4. Pendant la séance, touche le **nom d'un exercice** pour choisir sa charge de départ : une barre (olympique, EZ, trap bar… ou un poids personnalisé), le **poids du corps** (tu saisis alors le lest) ou **sans barre**. Le choix est retenu pour les séances suivantes.
+5. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
+6. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
 
-## Partager l'app avec un ami
+---
 
-- **Sans synchro** : envoie-lui simplement l'adresse. Ses données restent sur son téléphone.
-- **Avec synchro** : crée-lui un utilisateur (**Authentication > Users > Add user**, avec **Auto Confirm User**) et transmets-lui le mot de passe provisoire. À sa première connexion, il le remplace dans **Plus > Compte et synchronisation > Changer le mot de passe**. Les règles RLS l'empêchent de voir tes données, et toi les siennes depuis l'app. Depuis le tableau de bord Supabase, en revanche, tu peux voir ses données : préviens-le.
+## Mises à jour
+
+**Récupérer les nouvelles versions de Fonte.** Quand le dépôt d'origine évolue, ton dépôt affiche « This branch is X commits behind ». Clique sur **Sync fork**, puis **Update branch**. Ton `config.js` est conservé.
+
+Un conflit n'arrive que si `config.js` a aussi été modifié dans le dépôt d'origine. Si GitHub en signale un, ne clique pas sur **Discard commits**, car tu perdrais ta configuration : garde tes propres valeurs d'URL et de clé.
+
+**Sur tes appareils**, l'app vérifie s'il y a une nouvelle version à chaque réouverture et s'installe toute seule. Pendant une séance, elle propose **Mettre à jour** sans rien forcer. Le bouton **Plus > Rechercher une mise à jour** force la vérification. La version installée est affichée en bas de l'écran **Plus**.
+
+---
+
+## Partager l'app
+
+- **Sans compte** : envoie simplement l'adresse de ton site. L'app fonctionne sans connexion, mais les données restent sur l'appareil de la personne (pas de synchro).
+- **Avec un compte sur ton projet** : crée-lui un utilisateur comme à l'étape 4 et transmets-lui un mot de passe provisoire. Elle le remplace dans **Plus > Compte et synchronisation > Changer le mot de passe**. Les règles de sécurité l'empêchent de voir tes données, et toi les siennes depuis l'app. Depuis le tableau de bord Supabase, en revanche, tu peux voir ses données : préviens-la.
+- **Sa propre copie** : envoie-lui le lien du dépôt. Elle suit ce guide et devient totalement indépendante.
+
+---
 
 ## Sauvegardes
 
-La synchro sert déjà de sauvegarde, mais l'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois par mois, fais **Plus > Sauvegarde > Exporter en JSON** et range le fichier dans iCloud Drive ou Google Drive. Le même écran permet de réimporter ce fichier et d'exporter tes séries en CSV pour Excel.
-
-## Passer à la version 1.1 (barre par exercice)
-
-1. Dans Supabase, **SQL Editor > New query**, colle le contenu de `supabase/migration-1.1.sql` et clique sur **Run**. Ça ajoute une colonne pour le poids de barre ; aucune donnée n'est modifiée.
-2. Ensuite seulement, envoie les nouveaux fichiers sur GitHub (tout sauf `config.js`).
-3. Dans l'app, **Plus > Exercices**, touche un exercice à la barre, puis **Modifier** : choisis sa barre (olympique 20 kg, EZ 10 kg…) ou saisis son poids exact.
-
-## Mettre à jour l'app
-
-Si tu modifies un fichier (seul ou avec Claude), augmente le numéro de version en haut de `sw.js` (par exemple `fonte-v1.0.1`). L'app vérifie s'il y a une nouvelle version à chaque réouverture et s'installe toute seule si aucune séance n'est en cours ; pendant une séance, elle propose **Mettre à jour**. Le bouton **Plus > Rechercher une mise à jour** force la vérification. Sans ce changement de numéro, les appareils gardent l'ancienne version en cache. Seule exception : `config.js` est toujours relu sur le réseau.
-
-## Problèmes fréquents
-
-**« Email ou mot de passe incorrect ».** Vérifie l'email exact dans **Authentication > Users**. Garde ce mot de passe dans ton gestionnaire. Ne supprime pas l'utilisateur pour le changer : toutes ses données dans le cloud seraient effacées avec lui.
-
-**« Compte non confirmé ».** La case **Auto Confirm User** n'était pas cochée. Supprime l'utilisateur et recrée-le en la cochant.
-
-**La pastille indique « Erreur de synchro ».** Touche-la pour voir le message. Les causes habituelles : une faute dans `config.js`, le script SQL non exécuté, ou le projet Supabase en pause.
-
-**Projet Supabase en pause.** Les projets gratuits sont mis en pause après une semaine sans activité (pendant des vacances par exemple). L'app continue de fonctionner sur tes appareils. Pour relancer le projet : tableau de bord Supabase, ouvre le projet, **Resume project**. Les modifications en attente partent ensuite automatiquement.
-
-**Le son de fin de repos ne joue pas sur iPhone.** Le son ne joue que si l'app est au premier plan et le mode silencieux désactivé. Le décompte reste juste quand tu reviens dans l'app.
-
-**Tester en local sur l'ordinateur.** Ouvrir `index.html` en double-cliquant ne fonctionne pas (les navigateurs bloquent les modules JavaScript en `file://`). Dans le dossier, lance `python3 -m http.server 8000` et ouvre `http://localhost:8000`.
+L'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois par mois, fais **Plus > Sauvegarde > Exporter en JSON** et range le fichier dans ton stockage en ligne. Le même écran permet de réimporter ce fichier et d'exporter tes séries en CSV pour un tableur.
 
 ---
 
-## Organisation du code
+## Sécurité
+
+- **Tes données sont isolées** : des règles de sécurité au niveau des lignes (RLS) garantissent que chaque compte ne lit et n'écrit que ses propres données. Un visiteur non connecté n'a accès à rien.
+- **La clé dans `config.js` est faite pour être publique.** La sécurité repose sur les règles RLS, pas sur le secret de cette clé.
+- **Le point sensible, ce sont tes comptes GitHub et Supabase** : protège-les avec un mot de passe unique et la double authentification.
+- **L'administrateur d'un projet voit toutes ses données** depuis le tableau de bord Supabase. Si tu crées des comptes pour d'autres personnes, préviens-les.
+
+---
+
+## Problèmes fréquents
+
+**La pastille reste sur « Sur cet appareil ».** L'app ne lit pas ta configuration. Ouvre `https://TON-PSEUDO.github.io/fonte/config.js` dans ton navigateur : tu dois y voir ton URL et ta clé **entre les apostrophes**, avec une virgule à la fin de chaque ligne. Juste après une modification, attends jusqu'à 10 minutes que le cache se vide.
+
+**« Email ou mot de passe incorrect ».** Vérifie l'email exact dans **Authentication > Users**. Ne supprime pas l'utilisateur pour changer de mot de passe : toutes ses données dans le cloud seraient effacées avec lui. Utilise plutôt **Changer le mot de passe** dans l'app.
+
+**« Compte non confirmé ».** La case **Auto Confirm User** n'était pas cochée. Supprime l'utilisateur (avant d'avoir des données) et recrée-le en la cochant.
+
+**La pastille indique « Erreur de synchro ».** Touche-la pour voir le message. Les causes habituelles : une faute dans `config.js`, le script SQL non exécuté, ou le projet Supabase en pause.
+
+**Projet Supabase en pause.** Les projets gratuits sont mis en pause après une semaine sans activité. L'app continue de fonctionner sur tes appareils. Pour relancer le projet : tableau de bord Supabase, ouvre le projet, **Resume project**. Les modifications en attente partent ensuite automatiquement.
+
+**Le son de fin de repos ne joue pas sur iPhone.** Le son ne joue que si l'app est au premier plan et le mode silencieux désactivé. Le décompte reste juste quand tu reviens dans l'app.
+
+---
+
+## Pour les développeurs
+
+### Modifier l'app
+
+- Après toute modification, augmente le numéro de version **aux deux endroits, avec la même valeur** : `VERSION = 'fonte-vX.Y.Z'` en haut de `sw.js` et `APP_VERSION = 'X.Y.Z'` en haut de `js/app.js`. L'app compare ces deux valeurs pour savoir si une mise à jour est disponible.
+- Pour tester en local, ouvrir `index.html` en double-cliquant ne fonctionne pas (les navigateurs bloquent les modules JavaScript en `file://`). Dans le dossier, lance `python3 -m http.server 8000` et ouvre `http://localhost:8000`.
+- Si tu ajoutes une colonne à une table, ajoute-la dans `supabase/schema.sql` **et** dans la liste `columns` de la table dans `js/store.js`.
+
+### Organisation du code
 
 ```
 fonte/
 ├── index.html              Page unique de l'app
-├── config.js               URL et clé publique Supabase (à remplir)
+├── config.js               URL et clé publique Supabase
 ├── manifest.webmanifest    Nom, icônes, mode plein écran
 ├── sw.js                   Cache hors ligne et mises à jour
 ├── css/app.css             Styles (clair, sombre, mobile, tablette, ordinateur)
 ├── js/
-│   ├── app.js              Navigation, minuteur de repos, écran allumé
+│   ├── app.js              Navigation, minuteur de repos, mises à jour
 │   ├── store.js            Stockage local (IndexedDB)
-│   ├── sync.js             Synchronisation Supabase
+│   ├── sync.js             Synchronisation et connexion Supabase
 │   ├── calc.js             1RM, records, progression, poids de corps, disques
 │   ├── charts.js           Graphiques SVG
 │   ├── ui.js               Feuilles, menus, notifications
 │   └── views/              Un fichier par écran
 ├── supabase/schema.sql     Tables, synchro et règles de sécurité
-├── vendor/supabase.js      Bibliothèque Supabase (v2.119, copiée localement)
+├── vendor/supabase.js      Bibliothèque Supabase, copiée localement
 ├── fonts/                  Police Archivo (licence OFL)
 └── icons/                  Icônes de l'app
 ```
