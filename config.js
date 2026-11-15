@@ -1,0 +1,10 @@
+// Configuration de la synchronisation Supabase.
+// Colle ici l'URL du projet et la clé publique (Project Settings > API Keys).
+// Ces deux valeurs sont faites pour être publiques : la sécurité repose sur les règles RLS
+// créées par supabase/schema.sql. Ne mets JAMAIS la clé « secret » ou « service_role » ici.
+// Laisse vide pour utiliser l'app sans synchro (données sur l'appareil uniquement).
+
+window.FONTE_CONFIG = {
+  supabaseUrl: '',  // ex. 'https://abcdefghijkl.supabase.co'
+  supabaseKey: '',  // ex. 'sb_publishable_...' (ou l'ancienne clé « anon »)
+};
