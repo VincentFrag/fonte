@@ -212,10 +212,9 @@ export function renderTemplateEdit(view, ctx, id) {
 
 // ---------- Compte et synchronisation ----------
 export function renderAccount(view, ctx) {
-  let step = 'email';
   let email = '';
   const unsub = sync.onStatus(() => {
-    if (step === 'email' && view.isConnected && !view.querySelector('input:focus')) draw();
+    if (view.isConnected && !view.querySelector('input:focus')) draw();
   });
   ctx.onCleanup(unsub);
 
@@ -243,49 +242,34 @@ export function renderAccount(view, ctx) {
         </div>
       </section>
       <p class="block-sub">La synchro se lance automatiquement à l'ouverture de l'app et quelques secondes après chaque modification. Hors connexion, tout reste enregistré sur l'appareil et part dès le retour du réseau.</p>`;
-    } else if (step === 'email') {
-      body = `<form class="block form" data-email>
-        <p>Connecte-toi avec ton adresse email : tu reçois un code à usage unique, sans mot de passe à retenir.</p>
-        <label class="field"><span>Adresse email</span><input type="email" name="email" autocomplete="email" required value="${esc(email)}"></label>
-        <button class="btn primary" type="submit">Recevoir un code</button>
-      </form>`;
     } else {
-      body = `<form class="block form" data-code>
-        <p>Code envoyé à <strong>${esc(email)}</strong>. Il arrive en général en moins d'une minute ; pense à regarder les indésirables.</p>
-        <label class="field"><span>Code reçu par email</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required autofocus></label>
-        <div class="row-actions">
-          <button class="btn primary" type="submit">Se connecter</button>
-          <button class="btn ghost" type="button" data-restart>Changer d'adresse</button>
-        </div>
+      body = `<form class="block form" data-login>
+        <p>Connecte-toi avec le compte créé dans Supabase. Tu ne le fais qu'une fois par appareil : la connexion reste active ensuite.</p>
+        <label class="field"><span>Adresse email</span><input type="email" name="email" autocomplete="username" autocapitalize="off" required value="${esc(email)}"></label>
+        <label class="field"><span>Mot de passe</span><input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="btn primary" type="submit">Se connecter</button>
       </form>`;
     }
     view.innerHTML = `${ctx.pageHead('Compte et synchronisation', { back: '/plus' })}${body}`;
-    view.querySelector('[name=code]')?.focus();
   }
 
   view.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!e.target.matches('[data-login]')) return;
     const btn = e.target.querySelector('[type=submit]');
     btn.disabled = true;
+    const f = formData(e.target);
+    email = f.email.trim();
     try {
-      if (e.target.matches('[data-email]')) {
-        email = formData(e.target).email.trim();
-        await sync.sendCode(email);
-        step = 'code';
-        draw();
-      } else if (e.target.matches('[data-code]')) {
-        const code = formData(e.target).code.replace(/\s/g, '');
-        await sync.verifyCode(email, code);
-        toast('Connecté. Synchronisation en cours…');
-        step = 'email';
-        draw();
-      }
+      await sync.signIn(email, f.password);
+      toast('Connecté. Synchronisation en cours…');
+      draw();
     } catch (err) {
       const m = err?.message || String(err);
       let msg = m;
-      if (/rate limit|security purposes|only request this after/i.test(m)) msg = 'Trop de demandes rapprochées. Attends une minute avant de redemander un code.';
-      else if (/expired|invalid/i.test(m)) msg = 'Code invalide ou expiré. Vérifie le dernier email reçu.';
-      else if (/signups not allowed/i.test(m)) msg = 'Les inscriptions sont fermées sur ce projet : utilise l’adresse de ton compte.';
+      if (/invalid login credentials/i.test(m)) msg = 'Email ou mot de passe incorrect.';
+      else if (/not confirmed/i.test(m)) msg = 'Compte non confirmé : recrée-le dans Supabase en cochant « Auto Confirm User ».';
+      else if (/rate limit|too many/i.test(m)) msg = 'Trop de tentatives rapprochées. Attends quelques minutes.';
       else if (/fetch|network/i.test(m)) msg = 'Pas de connexion au serveur. Vérifie le réseau et l’adresse dans config.js.';
       toast(msg, { kind: 'error', duration: 6000 });
       btn.disabled = false;
@@ -294,10 +278,6 @@ export function renderAccount(view, ctx) {
 
   view.addEventListener('click', async (e) => {
     if (e.target.closest('[data-sync]')) sync.syncNow();
-    if (e.target.closest('[data-restart]')) {
-      step = 'email';
-      draw();
-    }
     if (e.target.closest('[data-out]')) {
       const pending = store.pendingCount();
       const ok = await confirmSheet('Se déconnecter', pending

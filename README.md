@@ -12,7 +12,7 @@ Application web installable (PWA) pour iPhone, tablette Android et ordinateur. E
 - noter son **poids de corps**, avec moyenne sur 7 jours et tendance hebdomadaire ;
 - **synchroniser** ses appareils via Supabase, tout en continuant à fonctionner **hors connexion**.
 
-Durée totale de mise en route : 30 à 45 minutes, une seule fois.
+Durée totale de mise en route : 20 à 30 minutes, une seule fois.
 
 ---
 
@@ -42,21 +42,14 @@ Durée totale de mise en route : 30 à 45 minutes, une seule fois.
 
    Si Supabase affiche un avertissement **Potential issues detected** avant l'exécution, tu peux confirmer le lancement. Le script ne supprime aucune donnée. Les seules mentions de suppression sont `on delete cascade` (tes lignes disparaissent si ton compte est supprimé) et le droit `delete` accordé à ton compte connecté. La sécurité au niveau des lignes (RLS) est activée juste après chaque création de table, et le tableau final permet de le vérifier.
 
-## Étape 3 : connexion par code email
+## Étape 3 : créer ton compte et fermer les inscriptions
 
-Sur iPhone, une app installée sur l'écran d'accueil ne partage pas sa session avec Safari : un lien de connexion ouvert depuis Mail connecterait Safari, pas l'app. Fonte utilise donc un **code à usage unique** que tu tapes dans l'app. Il faut l'ajouter aux emails envoyés par Supabase :
+L'app se connecte par **email + mot de passe**. Tu crées ton compte toi-même dans Supabase : aucun email n'est envoyé, donc pas besoin de configurer de serveur d'envoi.
 
-1. Dans Supabase, ouvre **Authentication**, puis la section des emails (**Emails** ou **Email Templates** selon la version du tableau de bord).
-2. Modifie le modèle **Magic Link** :
-   - Sujet : `Ton code Fonte : {{ .Token }}`
-   - Contenu :
-     ```html
-     <h2>Connexion à Fonte</h2>
-     <p>Ton code : <strong style="font-size:24px">{{ .Token }}</strong></p>
-     <p>Il est valable une heure. Si tu n'as rien demandé, ignore cet email.</p>
-     ```
-3. Fais la même modification sur le modèle **Confirm signup** (utilisé pour ta toute première connexion).
-4. Dans **Authentication > URL Configuration**, mets ton adresse GitHub Pages dans **Site URL** (`https://TON-PSEUDO.github.io/fonte/`).
+1. Dans Supabase, ouvre **Authentication > Users**, puis **Add user > Create new user**.
+2. Saisis ton email et un mot de passe solide (génère-le avec ton gestionnaire de mots de passe).
+3. Coche **Auto Confirm User**, puis **Create user**.
+4. Ferme ensuite les inscriptions : **Authentication > Sign In / Providers**, désactive **Allow new users to sign up**, puis **Save**. L'adresse de l'app étant publique, personne d'autre ne pourra ainsi créer de compte sur ton projet. Ton compte continue de fonctionner normalement.
 
 ## Étape 4 : relier l'app à Supabase
 
@@ -82,15 +75,7 @@ Sur iPhone, une app installée sur l'écran d'accueil ne partage pas sa session 
 
 **Ordinateur** : dans Chrome ou Edge, clique sur l'icône d'installation à droite de la barre d'adresse. Un simple favori fonctionne aussi.
 
-Sur chaque appareil : **Plus > Compte et synchronisation**, saisis ton email, puis le code reçu. Utilise l'adresse de ton compte Supabase (voir « Problèmes fréquents »). La connexion reste active ensuite, il n'y a pas à la refaire.
-
-## Étape 6 : fermer les inscriptions
-
-L'adresse de l'app est publique. Les règles de sécurité empêchent quiconque de voir tes données, mais un inconnu pourrait créer un compte sur ton projet et y stocker les siennes. Une fois **ta** première connexion faite :
-
-**Supabase > Authentication > Sign In / Providers**, désactive **Allow new users to sign up**, puis enregistre.
-
-Ton compte existant continue de fonctionner normalement.
+Sur chaque appareil : **Plus > Compte et synchronisation**, saisis l'email et le mot de passe créés à l'étape 3. Sur iPhone, le trousseau iCloud peut les enregistrer. La connexion reste active ensuite, il n'y a pas à la refaire.
 
 ---
 
@@ -112,11 +97,9 @@ Si tu modifies un fichier (seul ou avec Claude), augmente le numéro de version 
 
 ## Problèmes fréquents
 
-**Aucun email reçu.** Regarde les indésirables. Le service d'email intégré à Supabase est volontairement limité : peu d'envois par heure, et réservé aux adresses des membres du projet. Utilise donc l'adresse de ton compte Supabase. Pour lever ces limites, on peut brancher un service d'envoi externe (SMTP) dans **Authentication > Emails**.
+**« Email ou mot de passe incorrect ».** Vérifie l'email exact dans **Authentication > Users**. Garde ce mot de passe dans ton gestionnaire. Ne supprime pas l'utilisateur pour le changer : toutes ses données dans le cloud seraient effacées avec lui.
 
-**« Trop de demandes rapprochées ».** Supabase impose un délai d'environ une minute entre deux demandes de code.
-
-**Le code est refusé.** Utilise le code du **dernier** email reçu. Selon le projet, il compte 6 ou 8 chiffres.
+**« Compte non confirmé ».** La case **Auto Confirm User** n'était pas cochée. Supprime l'utilisateur et recrée-le en la cochant.
 
 **La pastille indique « Erreur de synchro ».** Touche-la pour voir le message. Les causes habituelles : une faute dans `config.js`, le script SQL non exécuté, ou le projet Supabase en pause.
 

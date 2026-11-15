@@ -157,20 +157,11 @@ export function syncNow() {
   schedule(0);
 }
 
-export async function sendCode(email) {
-  const { error } = await client.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
-  });
+// Connexion par email + mot de passe. Le compte est créé dans le tableau de bord Supabase,
+// donc aucun email n'est nécessaire.
+export async function signIn(email, password) {
+  const { error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
-}
-
-export async function verifyCode(email, code) {
-  const { error } = await client.auth.verifyOtp({ email, token: code, type: 'email' });
-  if (!error) return;
-  // Premier compte : certains projets envoient un code d'inscription
-  const retry = await client.auth.verifyOtp({ email, token: code, type: 'signup' });
-  if (retry.error) throw error;
 }
 
 export async function signOut() {
