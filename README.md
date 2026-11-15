@@ -87,6 +87,11 @@ Sur chaque appareil : **Plus > Compte et synchronisation**, saisis l'email et le
 4. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
 5. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
 
+## Partager l'app avec un ami
+
+- **Sans synchro** : envoie-lui simplement l'adresse. Ses données restent sur son téléphone.
+- **Avec synchro** : crée-lui un utilisateur (**Authentication > Users > Add user**, avec **Auto Confirm User**) et transmets-lui le mot de passe provisoire. À sa première connexion, il le remplace dans **Plus > Compte et synchronisation > Changer le mot de passe**. Les règles RLS l'empêchent de voir tes données, et toi les siennes depuis l'app. Depuis le tableau de bord Supabase, en revanche, tu peux voir ses données : préviens-le.
+
 ## Sauvegardes
 
 La synchro sert déjà de sauvegarde, mais l'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois par mois, fais **Plus > Sauvegarde > Exporter en JSON** et range le fichier dans iCloud Drive ou Google Drive. Le même écran permet de réimporter ce fichier et d'exporter tes séries en CSV pour Excel.
@@ -99,7 +104,7 @@ La synchro sert déjà de sauvegarde, mais l'offre gratuite de Supabase n'inclut
 
 ## Mettre à jour l'app
 
-Si tu modifies un fichier (seul ou avec Claude), augmente le numéro de version en haut de `sw.js` (par exemple `fonte-v1.0.1`). Au prochain lancement, l'app affiche **Nouvelle version disponible** : touche **Mettre à jour**. Sans ce changement de numéro, les appareils gardent l'ancienne version en cache. Seule exception : `config.js` est toujours relu sur le réseau.
+Si tu modifies un fichier (seul ou avec Claude), augmente le numéro de version en haut de `sw.js` (par exemple `fonte-v1.0.1`). L'app vérifie s'il y a une nouvelle version à chaque réouverture et s'installe toute seule si aucune séance n'est en cours ; pendant une séance, elle propose **Mettre à jour**. Le bouton **Plus > Rechercher une mise à jour** force la vérification. Sans ce changement de numéro, les appareils gardent l'ancienne version en cache. Seule exception : `config.js` est toujours relu sur le réseau.
 
 ## Problèmes fréquents
 

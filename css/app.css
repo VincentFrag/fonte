@@ -294,6 +294,7 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .empty { color: var(--ink-2); padding: 28px 0; }
 .hint-text { color: var(--ink-2); margin-top: 14px; font-size: 15px; }
 .fine { color: var(--ink-3); font-size: 13px; margin-top: 18px; }
+.update-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--ink-2); font-size: 14px; }
 .error-text { color: var(--danger); margin-top: 10px; font-size: 14px; }
 
 .banner {

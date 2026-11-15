@@ -20,7 +20,28 @@ export function renderMore(view, ctx) {
       <a class="list-row" href="#/reglages"><span class="list-main">Réglages<small>Repos, barre et disques, écran, thème</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/sauvegarde"><span class="list-main">Sauvegarde<small>Exporter ou importer tes données</small></span>${icon('chevron', 'row-chevron')}</a>
     </div>
-    <p class="fine">Fonte ${esc(ctx.version)}</p>`;
+    <section class="block update-box">
+      <p>Fonte ${esc(ctx.version)}</p>
+      <button class="btn" data-update>${icon('sync')}<span>Rechercher une mise à jour</span></button>
+    </section>`;
+  view.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-update]');
+    if (!b) return;
+    b.disabled = true;
+    b.querySelector('span').textContent = 'Recherche…';
+    try {
+      const r = await ctx.checkUpdate();
+      if (r === 'applying') {
+        b.querySelector('span').textContent = 'Installation…';
+        return;
+      }
+      toast(r === 'uptodate' ? `Fonte est à jour (version ${ctx.version}).` : 'Mise à jour automatique indisponible sur ce navigateur.');
+    } catch {
+      toast('Pas de connexion au serveur. Réessaie avec du réseau.', { kind: 'error' });
+    }
+    b.disabled = false;
+    b.querySelector('span').textContent = 'Rechercher une mise à jour';
+  });
 }
 
 // ---------- Exercices ----------
@@ -241,7 +262,14 @@ export function renderAccount(view, ctx) {
           <button class="btn" data-out>Se déconnecter</button>
         </div>
       </section>
-      <p class="block-sub">La synchro se lance automatiquement à l'ouverture de l'app et quelques secondes après chaque modification. Hors connexion, tout reste enregistré sur l'appareil et part dès le retour du réseau.</p>`;
+      <p class="block-sub">La synchro se lance automatiquement à l'ouverture de l'app et quelques secondes après chaque modification. Hors connexion, tout reste enregistré sur l'appareil et part dès le retour du réseau.</p>
+      <form class="block form" data-password>
+        <h2 class="block-title">Changer le mot de passe</h2>
+        <label class="field"><span>Nouveau mot de passe</span><input type="password" name="pw1" autocomplete="new-password" minlength="10" required>
+          <small>10 caractères minimum. Le plus simple : laisse ton gestionnaire de mots de passe en générer un.</small></label>
+        <label class="field"><span>Confirme le mot de passe</span><input type="password" name="pw2" autocomplete="new-password" minlength="10" required></label>
+        <button class="btn" type="submit">Changer le mot de passe</button>
+      </form>`;
     } else {
       body = `<form class="block form" data-login>
         <p>Connecte-toi avec le compte créé dans Supabase. Tu ne le fais qu'une fois par appareil : la connexion reste active ensuite.</p>
@@ -252,6 +280,36 @@ export function renderAccount(view, ctx) {
     }
     view.innerHTML = `${ctx.pageHead('Compte et synchronisation', { back: '/plus' })}${body}`;
   }
+
+  view.addEventListener('submit', async (e) => {
+    if (!e.target.matches('[data-password]')) return;
+    e.preventDefault();
+    const f = formData(e.target);
+    if (f.pw1 !== f.pw2) {
+      toast('Les deux mots de passe ne sont pas identiques.', { kind: 'error' });
+      return;
+    }
+    if (f.pw1.length < 10) {
+      toast('Le mot de passe doit faire au moins 10 caractères.', { kind: 'error' });
+      return;
+    }
+    const btn = e.target.querySelector('[type=submit]');
+    btn.disabled = true;
+    try {
+      await sync.changePassword(f.pw1);
+      e.target.reset();
+      toast('Mot de passe changé. Les autres appareils restent connectés.');
+    } catch (err) {
+      const m = err?.message || String(err);
+      let msg = m;
+      if (/different from the old/i.test(m)) msg = 'Le nouveau mot de passe doit être différent de l’ancien.';
+      else if (/reauthenticat|recent/i.test(m)) msg = 'Supabase demande une reconnexion récente : déconnecte-toi, reconnecte-toi, puis réessaie.';
+      else if (/weak|short|characters/i.test(m)) msg = 'Mot de passe refusé par Supabase : trop faible.';
+      else if (/fetch|network/i.test(m)) msg = 'Pas de connexion au serveur. Réessaie avec du réseau.';
+      toast(msg, { kind: 'error', duration: 6000 });
+    }
+    btn.disabled = false;
+  });
 
   view.addEventListener('submit', async (e) => {
     e.preventDefault();

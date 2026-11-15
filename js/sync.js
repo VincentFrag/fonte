@@ -164,6 +164,11 @@ export async function signIn(email, password) {
   if (error) throw error;
 }
 
+export async function changePassword(password) {
+  const { error } = await client.auth.updateUser({ password });
+  if (error) throw error;
+}
+
 export async function signOut() {
   try {
     await client.auth.signOut({ scope: 'local' });

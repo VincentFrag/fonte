@@ -12,7 +12,7 @@ import {
   renderAccount, renderSettings, renderBackup,
 } from './views/more.js';
 
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '1.3.0';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -286,6 +286,38 @@ function canUpdateSilently() {
   return !(a && a.matches('input, textarea, select'));
 }
 
+let swReg = null;
+let applyUpdate = null;
+
+// Vérification déclenchée à la main depuis l'écran Plus.
+// Renvoie 'applying' (rechargement imminent), 'uptodate' ou 'unsupported'.
+ctx.checkUpdate = async () => {
+  if (!swReg) return 'unsupported';
+  if (swReg.waiting) {
+    applyUpdate(swReg.waiting);
+    return 'applying';
+  }
+  await swReg.update();
+  const w = swReg.installing || swReg.waiting;
+  if (!w) return 'uptodate';
+  if (w.state !== 'installed') {
+    await new Promise((res) => {
+      const t = setTimeout(res, 15000);
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' || w.state === 'redundant') {
+          clearTimeout(t);
+          res();
+        }
+      });
+    });
+  }
+  if (swReg.waiting) {
+    applyUpdate(swReg.waiting);
+    return 'applying';
+  }
+  return 'uptodate';
+};
+
 function registerSW() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
   let updating = false;
@@ -294,7 +326,9 @@ function registerSW() {
     try { sessionStorage.setItem(UPDATED_KEY, '1'); } catch {}
     worker.postMessage('skipWaiting');
   };
+  applyUpdate = (worker) => apply(worker);
   navigator.serviceWorker.register('./sw.js').then((reg) => {
+    swReg = reg;
     let asked = false;
     const ask = (worker) => {
       if (canUpdateSilently()) return apply(worker);
