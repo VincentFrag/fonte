@@ -1,7 +1,7 @@
 // Service worker : met l'app en cache pour qu'elle s'ouvre sans réseau.
 // À CHAQUE MODIFICATION DES FICHIERS, augmente ce numéro de version
 // pour que les appareils récupèrent la nouvelle version.
-const VERSION = 'fonte-v1.0.1';
+const VERSION = 'fonte-v1.0.2';
 
 const ASSETS = [
   './',
@@ -52,7 +52,7 @@ self.addEventListener('fetch', (event) => {
   // config.js : réseau d'abord, pour prendre en compte une modification tout de suite
   if (url.pathname.endsWith('/config.js')) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((res) => {
           const copy = res.clone();
           caches.open(VERSION).then((c) => c.put(req, copy));
