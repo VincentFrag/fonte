@@ -127,7 +127,7 @@ export function dayToDate(day) {
 // ---------- Listes de référence ----------
 export const MUSCLES = [
   'Pectoraux', 'Dos', 'Épaules', 'Biceps', 'Triceps', 'Avant-bras',
-  'Quadriceps', 'Ischios', 'Fessiers', 'Mollets', 'Abdos', 'Autre',
+  'Quadriceps', 'Ischios', 'Fessiers', 'Mollets', 'Abdos', 'Corps entier', 'Cardio', 'Autre',
 ];
 
 export const EQUIPMENT = {
@@ -137,6 +137,8 @@ export const EQUIPMENT = {
   poulie: 'Poulie',
   pdc: 'Poids du corps',
   autre: 'Autre',
+  duree: 'Durée (gainage, HIIT)',
+  cardio: 'Cardio (durée et distance)',
 };
 
 export const BASE_EXERCISES = [
@@ -177,6 +179,28 @@ export function e1rm(load, reps) {
   return load * (1 + reps / 30);
 }
 
+// ---------- Modes de mesure ----------
+// reps   : charge × répétitions (musculation)
+// duree  : secondes (gainage, HIIT)
+// cardio : durée + distance (course, vélo, rameur…)
+export function modeOf(ex) {
+  if (ex?.equipment === 'duree') return 'duree';
+  if (ex?.equipment === 'cardio') return 'cardio';
+  return 'reps';
+}
+
+export function itemMode(item, ex) {
+  return item?.mode || modeOf(ex);
+}
+
+// Une série « compte » si elle est cochée, hors échauffement, et renseignée.
+export function setCounts(s, mode) {
+  if (!s.done || s.warmup) return false;
+  if (mode === 'duree') return s.t > 0;
+  if (mode === 'cardio') return s.t > 0 || s.d > 0;
+  return s.r > 0;
+}
+
 // ---------- Index des données (recalculé quand les données changent) ----------
 let cache = { v: -1 };
 
@@ -194,23 +218,33 @@ function index() {
     const day = localDay(w.started_at);
     for (const item of w.items || []) {
       const ex = store.getAny('exercises', item.exercise_id);
-      const sets = (item.sets || [])
-        .filter((s) => s.done && !s.warmup && s.r > 0)
-        .map((s) => {
+      const mode = itemMode(item, ex);
+      const done = (item.sets || []).filter((s) => setCounts(s, mode));
+      if (!done.length) continue;
+      let entry;
+      if (mode === 'duree') {
+        const sets = done.map((s) => ({ t: s.t }));
+        entry = { mode, sets, maxT: Math.max(...sets.map((x) => x.t)), totalT: sets.reduce((n, x) => n + x.t, 0) };
+      } else if (mode === 'cardio') {
+        const sets = done.map((s) => ({ t: s.t || 0, d: s.d || 0 }));
+        const time = sets.reduce((n, x) => n + x.t, 0);
+        const dist = sets.reduce((n, x) => n + x.d, 0);
+        entry = { mode, sets, time, dist, pace: dist > 0 && time > 0 ? time / dist : null };
+      } else {
+        const sets = done.map((s) => {
           const load = effectiveLoad(ex, s.w, day, item.base);
           return { w: s.w, r: s.r, rir: s.rir, load, e1rm: e1rm(load, s.r), pdc: isPdc(ex, item.base) };
         });
-      if (!sets.length) continue;
-      const entry = {
-        workoutId: w.id,
-        date: w.started_at,
-        base: item.base || null,
-        sets,
-        bestE1rm: Math.max(...sets.map((s) => s.e1rm || 0)) || null,
-        maxLoad: Math.max(...sets.map((s) => s.load || 0)) || null,
-        maxReps: Math.max(...sets.map((s) => s.r || 0)),
-        tonnage: sets.reduce((n, s) => n + (s.load || 0) * s.r, 0),
-      };
+        entry = {
+          mode,
+          sets,
+          bestE1rm: Math.max(...sets.map((x) => x.e1rm || 0)) || null,
+          maxLoad: Math.max(...sets.map((x) => x.load || 0)) || null,
+          maxReps: Math.max(...sets.map((x) => x.r || 0)),
+          tonnage: sets.reduce((n, x) => n + (x.load || 0) * x.r, 0),
+        };
+      }
+      Object.assign(entry, { workoutId: w.id, date: w.started_at, base: item.base || null });
       if (!cache.byExercise.has(item.exercise_id)) cache.byExercise.set(item.exercise_id, []);
       cache.byExercise.get(item.exercise_id).push(entry);
     }
@@ -282,29 +316,56 @@ export function lastSession(exerciseId, opts) {
 export function bests(exerciseId, opts) {
   const h = exerciseHistory(exerciseId, opts);
   if (!h.length) return null;
+  const out = { sessions: h.length, first: h[0].date, last: h[h.length - 1].date, mode: h[h.length - 1].mode };
+  const best = (key, cmp = (a, b) => a > b) => {
+    let b = null;
+    for (const s of h) if (s[key] != null && s[key] > 0 && (!b || cmp(s[key], b.value))) b = { value: s[key], date: s.date };
+    return b;
+  };
+  out.maxT = best('maxT');
+  out.totalT = best('totalT');
+  out.dist = best('dist');
+  out.time = best('time');
+  out.pace = best('pace', (a, b) => a < b);
   let e = null, load = null, ton = null, reps = null;
   for (const s of h) {
+    if (s.mode && s.mode !== 'reps') continue;
     if (s.bestE1rm && (!e || s.bestE1rm > e.value)) e = { value: s.bestE1rm, date: s.date, set: s.sets.find((x) => x.e1rm === s.bestE1rm) };
     if (s.maxLoad && (!load || s.maxLoad > load.value)) load = { value: s.maxLoad, date: s.date, set: s.sets.find((x) => x.load === s.maxLoad) };
     if (!ton || s.tonnage > ton.value) ton = { value: s.tonnage, date: s.date };
     if (!reps || s.maxReps > reps.value) reps = { value: s.maxReps, date: s.date };
   }
-  return { e1rm: e, load, tonnage: ton, reps, sessions: h.length, first: h[0].date, last: h[h.length - 1].date };
+  Object.assign(out, { e1rm: e, load, tonnage: ton, reps });
+  return out;
 }
 
-// Marque les records battus dans une séance (comparaison avec l'historique antérieur).
-// Renvoie un Set de "itemUid:setUid".
+// Marque les records battus dans une séance (comparaison avec l'historique antérieur) :
+// 1RM estimé pour la musculation, durée max pour les exercices en durée,
+// distance pour le cardio. Renvoie un Set de "itemUid:setUid".
 export function recordsIn(workout) {
   const out = new Set();
   const day = localDay(workout.started_at);
   for (const item of workout.items || []) {
     const prior = bests(item.exercise_id, { excludeWorkout: workout.id, before: workout.started_at });
-    if (!prior || !prior.e1rm) continue;
-    let best = prior.e1rm.value;
+    if (!prior) continue;
     const ex = store.getAny('exercises', item.exercise_id);
+    const mode = itemMode(item, ex);
+    let best;
+    let val;
+    if (mode === 'duree') {
+      best = prior.maxT?.value;
+      val = (s) => s.t;
+    } else if (mode === 'cardio') {
+      best = prior.dist?.value;
+      val = (s) => s.d;
+    } else {
+      best = prior.e1rm?.value;
+      val = (s) => e1rm(effectiveLoad(ex, s.w, day, item.base), s.r);
+    }
+    if (!best) continue;
     for (const s of item.sets || []) {
-      if (!s.done || s.warmup || !(s.r > 0)) continue;
-      const v = e1rm(effectiveLoad(ex, s.w, day, item.base), s.r);
+      if (!setCounts(s, mode)) continue;
+      const v = val(s);
       if (v && v > best + 0.01) {
         out.add(`${item.uid}:${s.uid}`);
         best = v;
@@ -317,8 +378,40 @@ export function recordsIn(workout) {
 // ---------- Préparation d'un exercice dans une séance ----------
 export function buildItem(exercise, tItem, uidFn) {
   const s = settings();
+  const mode = modeOf(exercise);
   const last = lastSession(exercise.id);
-  const target = tItem?.sets || (last ? last.sets.length : 3);
+  const lastSame = last && last.mode === mode ? last : null;
+  const common = {
+    uid: uidFn(),
+    exercise_id: exercise.id,
+    name: exercise.name,
+    mode,
+    rest_sec: tItem?.rest_sec ?? s.rest,
+    target_sets: tItem?.sets ?? null,
+  };
+
+  if (mode === 'duree') {
+    const n = tItem?.sets || lastSame?.sets.length || 3;
+    const sets = [];
+    for (let i = 0; i < n; i++) {
+      const prev = lastSame ? lastSame.sets[i] || lastSame.sets[lastSame.sets.length - 1] : null;
+      sets.push({ uid: uidFn(), t: tItem?.target_t ?? prev?.t ?? 30, done: false, warmup: false });
+    }
+    return { ...common, target_t: tItem?.target_t ?? null, int_rest: tItem?.int_rest ?? null, circuit: !!tItem?.circuit, base: { kind: 'none' }, sets };
+  }
+
+  if (mode === 'cardio') {
+    const n = tItem?.sets || 1;
+    const sets = [];
+    for (let i = 0; i < n; i++) {
+      const prev = lastSame ? lastSame.sets[i] || null : null;
+      sets.push({ uid: uidFn(), t: prev?.t ?? null, d: prev?.d ?? null, done: false, warmup: false });
+    }
+    return { ...common, base: { kind: 'none' }, sets };
+  }
+
+  const lastReps = lastSame;
+  const target = tItem?.sets || (lastReps ? lastReps.sets.length : 3);
   const repMin = tItem?.rep_min ?? null;
   const repMax = tItem?.rep_max ?? null;
   let progressed = false;
@@ -326,11 +419,11 @@ export function buildItem(exercise, tItem, uidFn) {
 
   const sets = [];
   for (let i = 0; i < target; i++) {
-    const prev = last ? last.sets[i] || last.sets[last.sets.length - 1] : null;
+    const prev = lastReps ? lastReps.sets[i] || lastReps.sets[lastReps.sets.length - 1] : null;
     sets.push({ uid: uidFn(), w: prev ? prev.w : null, r: prev ? prev.r : repMin ?? repMax ?? null, rir: null, done: false, warmup: false });
   }
   // Double progression : toutes les séries au haut de la fourchette → on monte la charge.
-  if (last && repMax && last.sets.length >= (tItem?.sets || 1) && last.sets.every((x) => x.r >= repMax)) {
+  if (lastReps && repMax && lastReps.sets.length >= (tItem?.sets || 1) && lastReps.sets.every((x) => x.r >= repMax)) {
     progressed = true;
     for (const st of sets) {
       if (st.w != null) st.w = Math.round((st.w + inc) * 100) / 100;
@@ -338,15 +431,11 @@ export function buildItem(exercise, tItem, uidFn) {
     }
   }
   return {
-    uid: uidFn(),
-    exercise_id: exercise.id,
-    name: exercise.name,
-    rest_sec: tItem?.rest_sec ?? s.rest,
+    ...common,
     rep_min: repMin,
     rep_max: repMax,
-    target_sets: tItem?.sets ?? null,
     progressed: progressed ? inc : 0,
-    base: last?.base || defaultBase(exercise),
+    base: lastReps?.base || defaultBase(exercise),
     sets,
   };
 }
@@ -354,17 +443,22 @@ export function buildItem(exercise, tItem, uidFn) {
 // ---------- Statistiques de séance ----------
 export function workoutStats(w) {
   const day = localDay(w.started_at);
-  let sets = 0, tonnage = 0;
+  let sets = 0, tonnage = 0, time = 0, dist = 0;
   for (const item of w.items || []) {
     const ex = store.getAny('exercises', item.exercise_id);
+    const mode = itemMode(item, ex);
     for (const s of item.sets || []) {
-      if (!s.done || s.warmup || !(s.r > 0)) continue;
+      if (!setCounts(s, mode)) continue;
       sets++;
-      tonnage += (effectiveLoad(ex, s.w, day, item.base) || 0) * s.r;
+      if (mode === 'reps') tonnage += (effectiveLoad(ex, s.w, day, item.base) || 0) * s.r;
+      else {
+        time += s.t || 0;
+        dist += s.d || 0;
+      }
     }
   }
   const end = w.ended_at ? Date.parse(w.ended_at) : Date.now();
-  return { sets, tonnage, duration: end - Date.parse(w.started_at), exercises: (w.items || []).length };
+  return { sets, tonnage, time, dist, duration: end - Date.parse(w.started_at), exercises: (w.items || []).length };
 }
 
 export function setsPerMuscle(days = 7) {
@@ -374,12 +468,32 @@ export function setsPerMuscle(days = 7) {
     if (Date.parse(w.started_at) < since) continue;
     for (const item of w.items || []) {
       const ex = store.getAny('exercises', item.exercise_id);
+      const mode = itemMode(item, ex);
+      if (mode === 'cardio') continue;
       const m = ex?.muscle || 'Autre';
-      const n = (item.sets || []).filter((s) => s.done && !s.warmup && s.r > 0).length;
+      const n = (item.sets || []).filter((s) => setCounts(s, mode)).length;
       if (n) counts.set(m, (counts.get(m) || 0) + n);
     }
   }
   return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+// ---------- Durées et allure ----------
+export function fmtSec(sec) {
+  if (sec == null || Number.isNaN(sec)) return '–';
+  const s = Math.round(sec);
+  if (s < 60) return `${s} s`;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  if (h) return `${h} h ${String(m).padStart(2, '0')}`;
+  return r ? `${m} min ${String(r).padStart(2, '0')}` : `${m} min`;
+}
+
+export function fmtPace(secPerKm) {
+  if (!secPerKm || !Number.isFinite(secPerKm)) return '–';
+  const s = Math.round(secPerKm);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} /km`;
 }
 
 export function weekSummary() {

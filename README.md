@@ -2,11 +2,12 @@
 
 Application web installable (PWA) pour téléphone, tablette et ordinateur. Elle permet de :
 
-- préparer des **programmes** (exercices, séries, fourchette de répétitions, repos) ;
+- partir de **programmes tout faits** (full body, 5×5, haut / bas, push / pull / legs, split, poids du corps, HIIT Tabata, circuit, cardio, gainage) ou créer les tiens ;
 - saisir ses **séances** rapidement, avec les performances de la fois précédente en regard ;
 - recevoir une **proposition de charge** quand toutes les séries atteignent le haut de la fourchette (double progression) ;
 - choisir la **barre** de chaque exercice et voir les **disques à charger** de chaque côté ;
-- lancer un **minuteur de repos** automatique à chaque série cochée ;
+- lancer un **minuteur de repos** automatique à chaque série cochée, et un **minuteur d'intervalles** pour le HIIT et le gainage ;
+- suivre aussi le **cardio** (durée, distance, allure) et les exercices **en durée** ;
 - repérer les **records** (1RM estimé, formule d'Epley) ;
 - suivre la **progression** par exercice et les **séries par groupe musculaire** ;
 - noter son **poids de corps**, avec moyenne sur 7 jours et tendance hebdomadaire ;
@@ -91,12 +92,14 @@ La pastille en haut à droite indique l'état de la synchro : **Synchronisé**, 
 
 ## Premiers pas
 
-1. **Plus > Exercices** : touche **Ajouter les exercices courants** pour démarrer avec une liste de base, puis crée les tiens.
-2. **Plus > Programmes** : crée tes séances types. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
+1. **Plus > Programmes > Ajouter un programme tout fait** : choisis un programme du catalogue. Ses séances types et les exercices nécessaires sont créés pour toi, et tu peux tout modifier ensuite.
+2. Pour composer tes propres séances : **Plus > Exercices** (le bouton **Ajouter les exercices courants** donne une liste de base), puis **Plus > Programmes > Nouveau**. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
 3. **Séance** : touche un programme pour démarrer. Les charges de la dernière fois sont pré-remplies. Coche ✓ chaque série terminée : le minuteur de repos démarre.
 4. Pendant la séance, touche le **nom d'un exercice** pour choisir sa charge de départ : une barre (olympique, EZ, trap bar… ou un poids personnalisé), le **poids du corps** (tu saisis alors le lest) ou **sans barre**. Le choix est retenu pour les séances suivantes.
 5. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
-6. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
+6. **Exercices en durée** (gainage, HIIT) : touche **Lancer le minuteur**. Il enchaîne efforts et récups avec des signaux sonores et coche les séries tout seul. Dans un programme, le menu **⋯** d'un exercice permet de l'**enchaîner en circuit** avec ses voisins : le minuteur tourne alors entre eux, tour après tour.
+7. **Cardio** : saisis la durée en minutes et la distance en km ; l'app calcule l'allure et la vitesse.
+8. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
 
 ---
 
@@ -145,7 +148,7 @@ L'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois pa
 
 **Projet Supabase en pause.** Les projets gratuits sont mis en pause après une semaine sans activité. L'app continue de fonctionner sur tes appareils. Pour relancer le projet : tableau de bord Supabase, ouvre le projet, **Resume project**. Les modifications en attente partent ensuite automatiquement.
 
-**Le son de fin de repos ne joue pas sur iPhone.** Le son ne joue que si l'app est au premier plan et le mode silencieux désactivé. Le décompte reste juste quand tu reviens dans l'app.
+**Le son ne joue pas sur iPhone** (fin de repos, minuteur d'intervalles). Le son ne joue que si l'app est au premier plan et le mode silencieux désactivé. Le décompte reste juste quand tu reviens dans l'app : les séries écoulées pendant ton absence sont cochées.
 
 ---
 
@@ -172,6 +175,8 @@ fonte/
 │   ├── sync.js             Synchronisation et connexion Supabase
 │   ├── calc.js             1RM, records, progression, poids de corps, disques
 │   ├── charts.js           Graphiques SVG
+│   ├── timer.js            Minuteur d'intervalles (HIIT, gainage)
+│   ├── presets.js          Catalogue de programmes tout faits
 │   ├── ui.js               Feuilles, menus, notifications
 │   └── views/              Un fichier par écran
 ├── supabase/schema.sql     Tables, synchro et règles de sécurité

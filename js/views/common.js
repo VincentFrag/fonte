@@ -67,7 +67,7 @@ export function editExercise(ex, presetName = '') {
       <label class="field"><span>Nom</span><input name="name" required maxlength="80" value="${esc(e.name)}" ${ex ? '' : 'autofocus'}></label>
       <label class="field"><span>Groupe musculaire</span><select name="muscle">
         ${calc.MUSCLES.map((m) => `<option ${m === e.muscle ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></label>
-      <label class="field"><span>Matériel</span><select name="equipment" data-equip>
+      <label class="field"><span>Type</span><select name="equipment" data-equip>
         ${Object.entries(calc.EQUIPMENT).map(([k, v]) => `<option value="${k}" ${k === e.equipment ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
       <div class="field" data-bar-field ${e.equipment === 'barre' ? '' : 'hidden'}>
         <label for="ex-bar">Poids de la barre (kg)</label>
@@ -76,7 +76,7 @@ export function editExercise(ex, presetName = '') {
         <small>Sert au calcul des disques à charger. Les barres varient d'une salle à l'autre : pèse-la ou regarde l'étiquette.</small>
       </div>
       <p class="field-help" data-pdc-help ${e.equipment === 'pdc' ? '' : 'hidden'}>Au poids du corps, tu saisis le lest (0 sans lest). Les calculs ajoutent ton dernier poids enregistré.</p>
-      <label class="field"><span>Incrément de charge (kg)</span><input name="increment" inputmode="decimal" value="${esc(String(inc).replace('.', ','))}">
+      <label class="field" data-inc-field ${['duree', 'cardio'].includes(e.equipment) ? 'hidden' : ''}><span>Incrément de charge (kg)</span><input name="increment" inputmode="decimal" value="${esc(String(inc).replace('.', ','))}">
         <small>Utilisé pour proposer la charge suivante quand tu atteins le haut de ta fourchette de répétitions.</small></label>
       <label class="field"><span>Notes</span><textarea name="notes" rows="2" maxlength="500" placeholder="Réglages machine, prise, tempo…">${esc(e.notes || '')}</textarea></label>
     </form>`,
@@ -85,6 +85,7 @@ export function editExercise(ex, presetName = '') {
       sel.addEventListener('change', () => {
         el.querySelector('[data-pdc-help]').hidden = sel.value !== 'pdc';
         el.querySelector('[data-bar-field]').hidden = sel.value !== 'barre';
+        el.querySelector('[data-inc-field]').hidden = ['duree', 'cardio'].includes(sel.value);
         el.querySelector('[name=increment]').value = String(calc.defaultIncrement(sel.value)).replace('.', ',');
       });
       el.addEventListener('click', (ev) => {
@@ -150,7 +151,7 @@ export function workoutRowHtml(w) {
   return `<a class="hist-row" href="#/historique/${w.id}">
     <span class="hist-date"><span class="hist-daynum">${d.getDate()}</span><span class="hist-wd">${esc(dfWd.format(d).replace('.', ''))}</span></span>
     <span class="hist-body"><span class="hist-name">${esc(w.name || 'Séance')}</span>
-      <span class="hist-meta">${calc.fmtDuration(st.duration)}, ${st.sets} série${st.sets > 1 ? 's' : ''}, ${calc.fmtTonnage(st.tonnage)}</span></span>
+      <span class="hist-meta">${calc.fmtDuration(st.duration)}, ${st.sets} série${st.sets > 1 ? 's' : ''}${st.tonnage ? `, ${calc.fmtTonnage(st.tonnage)}` : ''}${st.dist ? `, ${calc.fmt1(st.dist)} km` : ''}</span></span>
     ${rec ? `<span class="tag record">${rec} record${rec > 1 ? 's' : ''}</span>` : ''}
     ${icon('chevron', 'row-chevron')}
   </a>`;

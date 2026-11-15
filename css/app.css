@@ -360,6 +360,15 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .menu-item .mi-main { flex: 1; }
 .menu-item .mi-detail { color: var(--ink-3); font-size: 14px; font-weight: 400; }
 .menu-item.is-on { background: var(--accent-soft); }
+.menu-item .mi-main small { display: block; color: var(--ink-2); font-size: 13px; font-weight: 400; margin-top: 1px; }
+.catalog-list .menu-item { min-height: 60px; padding-top: 8px; padding-bottom: 8px; }
+.catalog-list + .group-title, .sheet-body > .group-title { margin-top: 14px; }
+.catalog-btn { margin: 0 0 16px; }
+.catalog-tpl { margin-top: 14px; }
+.catalog-tpl h3 { font-stretch: var(--narrow); font-weight: 800; font-size: 19px; }
+.catalog-tpl ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; }
+.catalog-tpl li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+.catalog-tpl li span { color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .menu-item.is-on .icon { color: var(--accent); }
 .custom-bar { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .inline-input { display: flex; gap: 8px; }
@@ -439,6 +448,14 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .add-ex { margin-top: 20px; }
 .w-notes { margin-top: 18px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); color: var(--ink-2); white-space: pre-wrap; }
 .finish-zone { margin-top: 28px; text-align: center; color: var(--ink-2); font-size: 14px; }
+
+/* Exercices en durée : série, précédent, durée, coche */
+.sets.mode-duree .set-head, .sets.mode-duree .set { grid-template-columns: 40px minmax(0, 1fr) 96px 46px; }
+.sets.mode-cardio .set-head, .sets.mode-cardio .set { grid-template-columns: 40px minmax(0, 1fr) 70px 70px 46px; }
+.ex-titles .tag { margin-top: 6px; }
+.ex-pace { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+.timer-btn { margin-top: 12px; width: 100%; background: #C8282D; border-color: #C8282D; color: #fff; }
+.timer-btn .icon { fill: currentColor; }
 
 @media (max-width: 370px) {
   .set-head, .set { grid-template-columns: 34px minmax(0, 1fr) 68px 54px 44px; gap: 4px; }
@@ -606,24 +623,22 @@ a.list-row:hover, button.list-row:hover, .hist-row:hover { background: var(--sur
 /* Programme */
 .tpl-items { display: grid; gap: 6px; margin-top: 18px; }
 .tpl-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, 64px) 40px; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, 76px) 40px; gap: 8px; align-items: center;
   padding: 8px 8px 8px 12px; background: var(--surface); border-radius: 12px; border: 1px solid var(--line);
 }
-.tpl-row-head { background: transparent; border: 0; font-size: 12px; color: var(--ink-3); padding-top: 0; padding-bottom: 0; }
-.tpl-row-head span:nth-child(n+2) { text-align: center; }
+
 .tpl-ex { font-weight: 600; }
 .tpl-row input.num {
   width: 100%; height: 42px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg);
   text-align: center; font-size: 18px; font-weight: 700; font-stretch: 80%;
 }
-.tpl-mini { display: none; }
+.tpl-row label { display: grid; gap: 2px; }
+.tpl-mini { display: block; font-size: 11px; color: var(--ink-3); text-align: center; white-space: nowrap; }
+.tpl-ex .tag { margin-left: 6px; vertical-align: middle; }
 @media (max-width: 599px) {
-  .tpl-row-head { display: none; }
   .tpl-row { grid-template-columns: repeat(4, 1fr) 40px; row-gap: 6px; }
   .tpl-ex { grid-column: 1 / -2; }
   .tpl-row .icon-btn { grid-column: -2; grid-row: 1; }
-  .tpl-row label { display: grid; gap: 2px; }
-  .tpl-mini { display: block; font-size: 11px; color: var(--ink-3); text-align: center; }
 }
 
 .search { display: block; position: sticky; top: -1px; background: var(--surface); padding-bottom: 8px; z-index: 1; }
@@ -690,6 +705,45 @@ a.list-row:hover, button.list-row:hover, .hist-row:hover { background: var(--sur
 @media (min-width: 900px) {
   .rest-bar { left: auto; right: 28px; bottom: 28px; width: 380px; }
 }
+
+/* ---------- Minuteur d'intervalles ---------- */
+/* Couleurs des disques : rouge pour l'effort, bleu pour la récup */
+body.timer-open { overflow: hidden; }
+.timer-wrap {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-t) + 16px) 20px calc(var(--safe-b) + 20px);
+  background: #22262C; color: #fff;
+  transition: background-color .25s;
+}
+.timer-wrap[data-phase='work'] { background: #C8282D; }
+.timer-wrap[data-phase='rest'] { background: #1F5BB8; }
+.timer-wrap[data-phase='done'] { background: #1D7F42; }
+.timer-wrap.is-paused .timer-time { opacity: .45; }
+.timer-top { display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
+.timer-round { font-stretch: var(--narrow); font-weight: 700; font-size: 20px; }
+.timer-close {
+  border: 0; background: rgba(255, 255, 255, .16); color: #fff;
+  min-height: 40px; padding: 0 16px; border-radius: 20px; font-weight: 600;
+}
+.timer-main { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 6px; }
+.timer-phase { font-stretch: var(--narrow); font-weight: 800; font-size: 34px; }
+.timer-ex { font-size: 20px; font-weight: 600; opacity: .92; min-height: 1.4em; }
+.timer-time {
+  font-stretch: 62%; font-weight: 800; line-height: 1;
+  font-size: min(42vw, 40vh); font-variant-numeric: tabular-nums;
+}
+.timer-bar { width: min(100%, 520px); height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .22); overflow: hidden; }
+.timer-bar span { display: block; height: 100%; background: #fff; transform-origin: left; transition: transform .2s linear; }
+.timer-next { margin-top: 10px; font-size: 16px; opacity: .85; min-height: 1.4em; }
+.timer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 520px; width: 100%; margin: 0 auto; }
+.timer-btn-big {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 60px; border-radius: 16px; border: 0;
+  background: #fff; color: #14181C; font-size: 18px; font-weight: 700;
+}
+.timer-btn-big .icon { fill: currentColor; }
+.timer-btn-big.ghost { background: rgba(255, 255, 255, .16); color: #fff; }
 
 /* ---------- Notifications ---------- */
 #toasts {

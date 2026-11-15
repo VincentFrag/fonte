@@ -4,6 +4,7 @@ import * as calc from '../calc.js';
 import * as sync from '../sync.js';
 import { esc, icon, openSheet, confirmSheet, menuSheet, toast, debounce, formData } from '../ui.js';
 import { pickExercise, platesHtml, workoutRowHtml } from './common.js';
+import { runIntervals } from '../timer.js';
 
 export function activeWorkout() {
   return store.all('workouts')
@@ -141,54 +142,108 @@ function editor(view, ctx, original, { live }) {
     return n?.w ?? null;
   };
 
-  function itemHtml(item, idx) {
-    const ex = store.getAny('exercises', item.exercise_id);
-    const name = ex?.name || item.name || 'Exercice supprimé';
-    const base = item.base || calc.defaultBase(ex);
-    const pdc = base.kind === 'pdc';
-    const barbell = base.kind === 'bar';
-    const last = calc.lastSession(item.exercise_id, { excludeWorkout: w.id, before: w.started_at });
-    const records = calc.recordsIn(w);
-    let target = '';
+  function targetText(item, mode) {
+    const n = item.target_sets || item.sets.length;
+    if (mode === 'duree') {
+      const t = item.target_t || item.sets[0]?.t;
+      if (item.int_rest != null) {
+        return item.circuit
+          ? `Circuit : ${n} tours, ${calc.fmtSec(t)} d'effort, ${calc.fmtSec(item.int_rest)} de récup`
+          : `${n} × ${calc.fmtSec(t)} d'effort, ${calc.fmtSec(item.int_rest)} de récup`;
+      }
+      return `${n} × ${calc.fmtSec(t)}, repos ${calc.fmtRest(item.rest_sec)}`;
+    }
+    if (mode === 'cardio') return 'Durée en minutes, distance en km';
     if (item.target_sets && (item.rep_min || item.rep_max)) {
       const lo = item.rep_min ?? item.rep_max;
       const hi = item.rep_max ?? item.rep_min;
-      target = `Objectif ${item.target_sets} × ${lo}${hi !== lo ? ` à ${hi}` : ''} reps, repos ${calc.fmtRest(item.rest_sec)}`;
-    } else {
-      target = `Repos ${calc.fmtRest(item.rest_sec)}`;
+      return `Objectif ${item.target_sets} × ${lo}${hi !== lo ? ` à ${hi}` : ''} reps, repos ${calc.fmtRest(item.rest_sec)}`;
     }
+    return `Repos ${calc.fmtRest(item.rest_sec)}`;
+  }
+
+  function itemHtml(item, idx) {
+    const ex = store.getAny('exercises', item.exercise_id);
+    const name = ex?.name || item.name || 'Exercice supprimé';
+    const mode = calc.itemMode(item, ex);
+    const base = item.base || calc.defaultBase(ex);
+    const pdc = mode === 'reps' && base.kind === 'pdc';
+    const barbell = mode === 'reps' && base.kind === 'bar';
+    const last = calc.lastSession(item.exercise_id, { excludeWorkout: w.id, before: w.started_at });
+    const lastSame = last && last.mode === mode ? last : null;
+    const records = calc.recordsIn(w);
     let k = 0;
     const rows = item.sets.map((st) => {
-      const prev = !st.warmup && last ? last.sets[k] : null;
+      const prev = !st.warmup && lastSame ? lastSame.sets[k] : null;
       const num = st.warmup ? 'É' : String(++k);
-      const prevTxt = prev ? `${prev.pdc ? (prev.w ? `+${calc.fmt(prev.w)}` : 'PDC') : calc.fmt(prev.w)} × ${prev.r}` : '–';
+      let prevTxt = '–';
+      let fields = '';
+      if (mode === 'duree') {
+        if (prev) prevTxt = calc.fmtSec(prev.t);
+        fields = `<input class="num" data-field="t" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.t)}" aria-label="Durée en secondes, série ${esc(num)}">`;
+      } else if (mode === 'cardio') {
+        if (prev) prevTxt = [prev.d ? `${calc.fmt(prev.d)} km` : '', prev.t ? calc.fmtSec(prev.t) : ''].filter(Boolean).join(', ');
+        fields = `<input class="num" data-field="tmin" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${st.t ? numStr(Math.round((st.t / 60) * 100) / 100) : ''}" aria-label="Durée en minutes, série ${esc(num)}">
+          <input class="num" data-field="d" inputmode="decimal" autocomplete="off" enterkeyhint="done" value="${numStr(st.d)}" aria-label="Distance en km, série ${esc(num)}">`;
+      } else {
+        if (prev) prevTxt = `${prev.pdc ? (prev.w ? `+${calc.fmt(prev.w)}` : 'PDC') : calc.fmt(prev.w)} × ${prev.r}`;
+        fields = `<input class="num" data-field="w" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${numStr(st.w)}" placeholder="${pdc ? '0' : ''}" aria-label="${pdc ? 'Lest' : 'Charge'} en kg, série ${esc(num)}">
+          <input class="num" data-field="r" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.r)}" aria-label="Répétitions, série ${esc(num)}">
+          ${s.showRir ? `<input class="num" data-field="rir" inputmode="numeric" autocomplete="off" value="${numStr(st.rir)}" aria-label="Répétitions en réserve, série ${esc(num)}">` : ''}`;
+      }
       const isRec = records.has(`${item.uid}:${st.uid}`);
       return `<div class="set ${st.done ? 'is-done' : ''} ${st.warmup ? 'is-warmup' : ''} ${isRec ? 'is-record' : ''}" data-set="${st.uid}">
         <button class="set-num" data-set-menu aria-label="Options de la série ${esc(num)}">${num}</button>
         <span class="set-prev">${isRec ? '<span class="tag record">Record</span>' : esc(prevTxt)}</span>
-        <input class="num" data-field="w" inputmode="decimal" autocomplete="off" enterkeyhint="next" value="${numStr(st.w)}" placeholder="${pdc ? '0' : ''}" aria-label="${pdc ? 'Lest' : 'Charge'} en kg, série ${esc(num)}">
-        <input class="num" data-field="r" inputmode="numeric" autocomplete="off" enterkeyhint="done" value="${numStr(st.r)}" aria-label="Répétitions, série ${esc(num)}">
-        ${s.showRir ? `<input class="num" data-field="rir" inputmode="numeric" autocomplete="off" value="${numStr(st.rir)}" aria-label="Répétitions en réserve, série ${esc(num)}">` : ''}
+        ${fields}
         <button class="set-check" data-check aria-pressed="${st.done ? 'true' : 'false'}" aria-label="Série ${esc(num)} faite">${icon('check')}</button>
       </div>`;
     }).join('');
 
+    let head = '';
+    let setsCls = '';
+    if (mode === 'duree') {
+      head = '<span>Série</span><span>Précédent</span><span>Durée (s)</span><span></span>';
+      setsCls = 'mode-duree';
+    } else if (mode === 'cardio') {
+      head = '<span>Série</span><span>Précédent</span><span>Min</span><span>Km</span><span></span>';
+      setsCls = 'mode-cardio';
+    } else {
+      head = `<span>Série</span><span>Précédent</span><span>${pdc ? 'Lest' : 'kg'}</span><span>Reps</span>${s.showRir ? '<span>RIR</span>' : ''}<span></span>`;
+      setsCls = s.showRir ? 'with-rir' : '';
+    }
+
+    let extra = '';
+    if (mode === 'cardio') {
+      const done = item.sets.filter((x) => x.done);
+      const t = done.reduce((n, x) => n + (x.t || 0), 0);
+      const d = done.reduce((n, x) => n + (x.d || 0), 0);
+      if (t > 0 && d > 0) extra = `<p class="ex-pace">Allure : ${esc(calc.fmtPace(t / d))}, vitesse : ${esc(calc.fmt1(d / (t / 3600)))} km/h</p>`;
+    }
+    const prevItem = idx > 0 ? w.items[idx - 1] : null;
+    const insideCircuit = item.circuit && prevItem?.circuit && calc.itemMode(prevItem, store.getAny('exercises', prevItem.exercise_id)) === 'duree';
+    const canTime = mode === 'duree' && live && !insideCircuit && item.sets.some((x) => !x.done && x.t > 0);
+
     return `<section class="ex" data-item="${item.uid}">
       <header class="ex-head">
         <div class="ex-titles">
-          <h2 class="ex-name"><button class="ex-name-btn" data-base aria-label="${esc(name)} : changer la charge de départ (actuellement ${esc(calc.baseLabel(base))})">${esc(name)}</button></h2>
-          <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(calc.baseLabel(base))}${icon('down')}</button>
-          <p class="ex-meta">${esc(target)}</p>
+          ${mode === 'reps'
+            ? `<h2 class="ex-name"><button class="ex-name-btn" data-base aria-label="${esc(name)} : changer la charge de départ (actuellement ${esc(calc.baseLabel(base))})">${esc(name)}</button></h2>
+               <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(calc.baseLabel(base))}${icon('down')}</button>`
+            : `<h2 class="ex-name">${esc(name)}</h2>${item.circuit ? '<span class="tag">Circuit</span>' : ''}`}
+          <p class="ex-meta">${esc(targetText(item, mode))}</p>
         </div>
         <button class="icon-btn" data-item-menu aria-label="Options de l'exercice ${esc(name)}">${icon('more')}</button>
       </header>
       ${item.progressed && !item.sets.some((x) => x.done) ? `<p class="ex-hint">Toutes tes séries ont atteint ${item.rep_max} reps la dernière fois : charge augmentée de ${esc(calc.fmt(item.progressed))} kg.</p>` : ''}
       ${ex?.notes ? `<p class="ex-notes">${esc(ex.notes)}</p>` : ''}
       ${barbell ? `<div class="plates" data-plates>${platesHtml(nextWeight(item), ex, base)}</div>` : ''}
-      <div class="sets ${s.showRir ? 'with-rir' : ''}">
-        <div class="set-head" aria-hidden="true"><span>Série</span><span>Précédent</span><span>${pdc ? 'Lest' : 'kg'}</span><span>Reps</span>${s.showRir ? '<span>RIR</span>' : ''}<span></span></div>
+      ${canTime ? `<button class="btn timer-btn" data-timer>${icon('play')}<span>Lancer le minuteur${item.circuit ? ' du circuit' : ''}</span></button>` : ''}
+      <div class="sets ${setsCls}">
+        <div class="set-head" aria-hidden="true">${head}</div>
         ${rows}
       </div>
+      ${extra}
       <button class="add-set" data-add-set>${icon('add')}<span>Ajouter une série</span></button>
     </section>`;
   }
@@ -206,7 +261,7 @@ function editor(view, ctx, original, { live }) {
       <button class="btn ghost block add-ex" data-add-ex>${icon('add')}<span>Ajouter un exercice</span></button>
       ${w.notes ? `<p class="w-notes">${esc(w.notes)}</p>` : ''}
       ${live && w.items.length ? `<div class="finish-zone">
-          <p>${st.sets} série${st.sets > 1 ? 's' : ''} faite${st.sets > 1 ? 's' : ''}, ${esc(calc.fmtTonnage(st.tonnage))} soulevés</p>
+          <p>${st.sets} série${st.sets > 1 ? 's' : ''} faite${st.sets > 1 ? 's' : ''}${st.tonnage ? `, ${esc(calc.fmtTonnage(st.tonnage))} soulevés` : ''}${st.time ? `, ${esc(calc.fmtSec(st.time))} d'effort` : ''}</p>
           <button class="btn primary block" data-finish>Terminer la séance</button>
         </div>` : ''}`;
   }
@@ -224,7 +279,11 @@ function editor(view, ctx, original, { live }) {
     const set = findSet(inp, item);
     if (!set) return;
     const v = calc.parseNum(inp.value);
-    set[inp.dataset.field] = inp.dataset.field === 'w' ? v : v == null ? null : Math.max(0, Math.round(v));
+    const f = inp.dataset.field;
+    if (f === 'w') set.w = v;
+    else if (f === 'd') set.d = v == null ? null : Math.max(0, Math.round(v * 100) / 100);
+    else if (f === 'tmin') set.t = v == null ? null : Math.max(0, Math.round(v * 60));
+    else set[f] = v == null ? null : Math.max(0, Math.round(v));
     if (inp.dataset.field === 'w') {
       const p = inp.closest('[data-item]').querySelector('[data-plates]');
       if (p) p.innerHTML = platesHtml(nextWeight(item), store.getAny('exercises', item.exercise_id), item.base);
@@ -240,7 +299,7 @@ function editor(view, ctx, original, { live }) {
     e.preventDefault();
     const inputs = [...view.querySelectorAll('input.num')];
     const i = inputs.indexOf(e.target);
-    if (e.target.dataset.field === 'r') e.target.closest('[data-set]').querySelector('[data-check]').focus();
+    if (['r', 't', 'd'].includes(e.target.dataset.field)) e.target.closest('[data-set]').querySelector('[data-check]').focus();
     else if (inputs[i + 1]) inputs[i + 1].focus();
   });
 
@@ -252,12 +311,13 @@ function editor(view, ctx, original, { live }) {
       const set = findSet(t, item);
       if (!set) return;
       if (!set.done) {
-        if (!(set.r > 0)) {
+        const mode = calc.itemMode(item, store.getAny('exercises', item.exercise_id));
+        if (!calc.setCounts({ ...set, done: true, warmup: false }, mode)) {
           const row = t.closest('[data-set]');
           row.classList.remove('shake');
           void row.offsetWidth;
           row.classList.add('shake');
-          row.querySelector('[data-field=r]').focus();
+          row.querySelector({ duree: '[data-field=t]', cardio: '[data-field=tmin]' }[mode] || '[data-field=r]').focus();
           return;
         }
         set.done = true;
@@ -265,11 +325,11 @@ function editor(view, ctx, original, { live }) {
         const i = item.sets.indexOf(set);
         const nxt = item.sets[i + 1];
         if (nxt && !nxt.done) {
-          if (nxt.w == null) nxt.w = set.w;
-          if (nxt.r == null) nxt.r = set.r;
+          for (const f of ['w', 'r', 't']) if (nxt[f] == null && set[f] != null && mode !== 'cardio') nxt[f] = set[f];
         }
         if (navigator.vibrate) navigator.vibrate(12);
-        if (live && !set.warmup) ctx.rest.start(item.rest_sec || s.rest);
+        const restFor = mode === 'duree' && item.int_rest != null && nxt ? item.int_rest : item.rest_sec || s.rest;
+        if (live && !set.warmup && mode !== 'cardio') ctx.rest.start(restFor);
         rerender();
         if (calc.recordsIn(w).has(`${item.uid}:${set.uid}`)) toast('Nouveau record sur cet exercice.', { kind: 'record' });
       } else {
@@ -277,6 +337,17 @@ function editor(view, ctx, original, { live }) {
         set.at = null;
         rerender();
       }
+      return;
+    }
+
+    if (t.closest('[data-timer]')) {
+      const item = findItem(t);
+      save();
+      ctx.rest.stop();
+      runIntervals(ctx, w, item.uid, {
+        onStep: () => save(),
+        onEnd: () => rerender(),
+      });
       return;
     }
 
@@ -297,7 +368,10 @@ function editor(view, ctx, original, { live }) {
     if (t.closest('[data-add-set]')) {
       const item = findItem(t);
       const lastSet = item.sets[item.sets.length - 1];
-      item.sets.push({ uid: store.uuid(), w: lastSet?.w ?? null, r: lastSet?.r ?? null, rir: null, done: false, warmup: false });
+      const mode = calc.itemMode(item, store.getAny('exercises', item.exercise_id));
+      if (mode === 'duree') item.sets.push({ uid: store.uuid(), t: lastSet?.t ?? 30, done: false, warmup: false });
+      else if (mode === 'cardio') item.sets.push({ uid: store.uuid(), t: null, d: null, done: false, warmup: false });
+      else item.sets.push({ uid: store.uuid(), w: lastSet?.w ?? null, r: lastSet?.r ?? null, rir: null, done: false, warmup: false });
       rerender();
       return;
     }
@@ -322,6 +396,9 @@ function editor(view, ctx, original, { live }) {
       if (idx > 0) items.push({ label: 'Monter', value: 'up', icon: 'up' });
       if (idx < w.items.length - 1) items.push({ label: 'Descendre', value: 'down', icon: 'down' });
       items.push({ label: 'Temps de repos', value: 'rest' });
+      if (calc.itemMode(item, store.getAny('exercises', item.exercise_id)) === 'duree') {
+        items.push({ label: item.circuit ? 'Retirer du circuit' : 'Enchaîner en circuit avec les voisins', value: 'circuit' });
+      }
       items.push({ label: 'Voir la progression', value: 'progress' });
       items.push({ label: 'Retirer de la séance', value: 'remove', danger: true, icon: 'trash' });
       const name = store.getAny('exercises', item.exercise_id)?.name || item.name;
@@ -336,6 +413,10 @@ function editor(view, ctx, original, { live }) {
           item.rest_sec = v;
           rerender();
         }
+      } else if (c === 'circuit') {
+        item.circuit = !item.circuit;
+        if (item.circuit && item.int_rest == null) item.int_rest = 15;
+        rerender();
       } else if (c === 'progress') {
         save();
         ctx.go(`/progres/${item.exercise_id}`);
@@ -420,7 +501,9 @@ function editor(view, ctx, original, { live }) {
       body: `<div class="figures compact">
           <div class="figure"><span class="fig-value">${esc(calc.fmtDuration(st.duration))}</span><span class="fig-label">durée</span></div>
           <div class="figure"><span class="fig-value">${st.sets}</span><span class="fig-label">séries</span></div>
-          <div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(st.tonnage))}</span><span class="fig-label">soulevés</span></div>
+          ${st.tonnage || !st.time ? `<div class="figure"><span class="fig-value">${esc(calc.fmtTonnage(st.tonnage))}</span><span class="fig-label">soulevés</span></div>` : ''}
+          ${st.time ? `<div class="figure"><span class="fig-value">${esc(calc.fmtSec(st.time))}</span><span class="fig-label">d'effort</span></div>` : ''}
+          ${st.dist ? `<div class="figure"><span class="fig-value">${esc(calc.fmt1(st.dist))}<small>km</small></span><span class="fig-label">parcourus</span></div>` : ''}
           ${rec ? `<div class="figure is-record"><span class="fig-value">${rec}</span><span class="fig-label">record${rec > 1 ? 's' : ''}</span></div>` : ''}
         </div>
         ${undone ? `<p class="sheet-text">${undone} série${undone > 1 ? 's' : ''} non cochée${undone > 1 ? 's' : ''} ${undone > 1 ? 'seront retirées' : 'sera retirée'}.</p>` : ''}`,

@@ -29,6 +29,9 @@ const ICONS = {
   down: '<path d="M6 9l6 6 6-6"/>',
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 13h8l1-13"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>',
+  pause: '<path d="M8.5 5.5v13M15.5 5.5v13"/>',
+  skip: '<path d="M6 5.5l9 6.5-9 6.5zM18 5.5v13"/>',
 };
 
 export function icon(name, cls = '') {

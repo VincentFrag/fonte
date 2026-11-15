@@ -12,7 +12,7 @@ import {
   renderAccount, renderSettings, renderBackup,
 } from './views/more.js';
 
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -161,24 +161,36 @@ function unlockAudio() {
   } catch {}
 }
 
-function beep() {
+// Joue une suite de bips : [[délai, fréquence, durée], …]
+function tones(list) {
   if (!calc.settings().sound || !audioCtx) return;
   try {
     const t0 = audioCtx.currentTime;
-    [0, 0.22, 0.44].forEach((d, i) => {
+    for (const [d, f, len] of list) {
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
       o.type = 'sine';
-      o.frequency.value = i === 2 ? 1175 : 880;
+      o.frequency.value = f;
       g.gain.setValueAtTime(0.0001, t0 + d);
       g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.18);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + len);
       o.connect(g).connect(audioCtx.destination);
       o.start(t0 + d);
-      o.stop(t0 + d + 0.2);
-    });
+      o.stop(t0 + d + len + 0.02);
+    }
   } catch {}
 }
+
+function beep() {
+  tones([[0, 880, 0.18], [0.22, 880, 0.18], [0.44, 1175, 0.18]]);
+}
+
+ctx.sound = {
+  tick: () => tones([[0, 660, 0.1]]),
+  go: () => tones([[0, 1175, 0.35]]),
+  rest: () => tones([[0, 880, 0.15], [0.18, 660, 0.25]]),
+  done: () => tones([[0, 880, 0.15], [0.18, 1175, 0.15], [0.36, 1568, 0.35]]),
+};
 
 const rest = {
   state: null, // {endsAt, duration}

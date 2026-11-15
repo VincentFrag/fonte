@@ -2,9 +2,10 @@
 import * as store from '../store.js';
 import * as calc from '../calc.js';
 import * as sync from '../sync.js';
-import { esc, icon, toast, confirmSheet, menuSheet, formData } from '../ui.js';
+import { esc, icon, toast, confirmSheet, menuSheet, formData, openSheet } from '../ui.js';
 import { sortedExercises, exerciseListHtml, editExercise, pickExercise, addBaseExercises } from './common.js';
 import { startWorkout, activeWorkout } from './workout.js';
+import * as presets from '../presets.js';
 
 export function renderMore(view, ctx) {
   const nEx = store.all('exercises').length;
@@ -100,15 +101,68 @@ export function renderTemplates(view, ctx) {
   view.innerHTML = `
     ${ctx.pageHead('Programmes', { back: '/plus', actions: `<button class="btn primary small" data-new>${icon('add')}<span>Nouveau</span></button>` })}
     <p class="block-sub">Un programme est une séance type : la liste des exercices, le nombre de séries, la fourchette de répétitions et le repos. Quand tu atteins le haut de la fourchette sur toutes les séries, l'app te propose la charge suivante.</p>
+    <button class="btn block catalog-btn" data-catalog>${icon('add')}<span>Ajouter un programme tout fait</span></button>
     ${list.length ? `<div class="list">${list.map((t) => {
       const names = (t.items || []).map((it) => store.getAny('exercises', it.exercise_id)?.name).filter(Boolean);
       return `<a class="list-row" href="#/programmes/${t.id}"><span class="list-main">${esc(t.name)}<small>${esc(names.join(', ') || 'Aucun exercice')}</small></span>${icon('chevron', 'row-chevron')}</a>`;
     }).join('')}</div>` : '<p class="empty">Aucun programme. Crée par exemple « Haut du corps » ou « Push A ».</p>'}`;
-  view.addEventListener('click', (e) => {
+  view.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-catalog]')) {
+      const p = await catalogSheet();
+      if (!p) return;
+      const created = presets.addProgram(p);
+      toast(`« ${p.name} » ajouté : ${created.length} séance${created.length > 1 ? 's' : ''} type${created.length > 1 ? 's' : ''}.`);
+      ctx.render();
+      return;
+    }
     if (!e.target.closest('[data-new]')) return;
     const t = store.save('templates', { id: store.uuid(), name: 'Nouveau programme', position: list.length, items: [], notes: '' });
     ctx.go(`/programmes/${t.id}?new`);
   });
+}
+
+// Catalogue : liste des programmes, puis détail avant ajout
+async function catalogSheet() {
+  for (;;) {
+    const id = await openSheet({
+      title: 'Programmes tout faits',
+      wide: true,
+      body: [['muscu', 'Musculation'], ['cardio', 'Cardio, HIIT et gainage']].map(([fam, title]) => `
+        <h3 class="group-title">${esc(title)}</h3>
+        <div class="menu-list catalog-list">${presets.PROGRAMS.filter((p) => p.family === fam).map((p) => `
+          <button class="menu-item" data-prog="${p.id}"><span class="mi-main">${esc(p.name)}<small>${esc(p.summary)}</small></span>${icon('chevron')}</button>`).join('')}
+        </div>`).join(''),
+      onMount(el, api) {
+        el.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-prog]');
+          if (b) api.close(b.dataset.prog);
+        });
+      },
+    });
+    if (!id) return null;
+    const p = presets.PROGRAMS.find((x) => x.id === id);
+    const missing = presets.missingExercises(p);
+    const exName = (n) => esc(n);
+    const itemLine = (i) => {
+      if (i.target_t != null) return `${exName(i.ex)} <span>${i.sets} × ${esc(calc.fmtSec(i.target_t))}${i.int_rest != null ? `, récup ${esc(calc.fmtSec(i.int_rest))}` : ''}</span>`;
+      if (i.rep_min != null) return `${exName(i.ex)} <span>${i.sets} × ${i.rep_min}${i.rep_max !== i.rep_min ? `–${i.rep_max}` : ''}</span>`;
+      return `${exName(i.ex)} <span>durée et distance</span>`;
+    };
+    const ok = await openSheet({
+      title: p.name,
+      wide: true,
+      body: `<p class="sheet-text first">${esc(p.description)}</p>
+        ${p.templates.map((t) => `<div class="catalog-tpl"><h3>${esc(t.name)}</h3>
+          <ul>${t.items.map((i) => `<li>${itemLine(i)}</li>`).join('')}</ul></div>`).join('')}
+        <p class="fine">${p.templates.length} séance${p.templates.length > 1 ? 's' : ''} type${p.templates.length > 1 ? 's' : ''} ${p.templates.length > 1 ? 'seront ajoutées' : 'sera ajoutée'} à tes programmes${missing.length ? `, avec ${missing.length} nouvel${missing.length > 1 ? 's' : ''} exercice${missing.length > 1 ? 's' : ''}` : ''}. Tu pourras tout modifier ensuite.</p>`,
+      actions: [
+        { label: 'Retour', value: 'back' },
+        { label: 'Ajouter ce programme', kind: 'primary', value: 'add' },
+      ],
+    });
+    if (ok === 'add') return p;
+    if (ok !== 'back') return null;
+  }
 }
 
 export function renderTemplateEdit(view, ctx, id) {
@@ -130,15 +184,28 @@ export function renderTemplateEdit(view, ctx, id) {
       ${ctx.pageHead('Programme', { back: '/programmes', actions: `<button class="icon-btn" data-menu aria-label="Options du programme">${icon('more')}</button>` })}
       <label class="field big"><span>Nom</span><input data-name maxlength="80" value="${esc(t.name)}"></label>
       <div class="tpl-items">
-        ${t.items.length ? `<div class="tpl-row tpl-row-head" aria-hidden="true"><span>Exercice</span><span>Séries</span><span>Reps min</span><span>Reps max</span><span>Repos (s)</span><span></span></div>` : ''}
         ${t.items.map((it, i) => {
           const ex = store.getAny('exercises', it.exercise_id);
+          const mode = calc.modeOf(ex);
+          const field = (f, label, aria) => `<label><span class="sr-only">${aria}</span><span class="tpl-mini" aria-hidden="true">${label}</span><input class="num" inputmode="numeric" data-f="${f}" value="${it[f] ?? ''}"></label>`;
+          const blank = '<span class="tpl-blank" aria-hidden="true"></span>';
+          let fields;
+          if (mode === 'duree') {
+            fields = field('sets', it.circuit ? 'Tours' : 'Séries', it.circuit ? 'Nombre de tours' : 'Séries')
+              + field('target_t', 'Effort (s)', 'Durée de l’effort en secondes')
+              + field('int_rest', 'Récup (s)', 'Récupération entre les efforts, en secondes')
+              + field('rest_sec', it.circuit ? 'Entre tours' : 'Repos (s)', it.circuit ? 'Repos entre les tours, en secondes' : 'Repos après l’exercice, en secondes');
+          } else if (mode === 'cardio') {
+            fields = field('sets', 'Séries', 'Séries') + blank + blank + field('rest_sec', 'Repos (s)', 'Repos en secondes');
+          } else {
+            fields = field('sets', 'Séries', 'Séries')
+              + field('rep_min', 'Reps min', 'Répétitions minimum')
+              + field('rep_max', 'Reps max', 'Répétitions maximum')
+              + field('rest_sec', 'Repos (s)', 'Repos en secondes');
+          }
           return `<div class="tpl-row" data-i="${i}">
-            <span class="tpl-ex">${esc(ex?.name || 'Exercice supprimé')}</span>
-            <label><span class="sr-only">Séries</span><span class="tpl-mini" aria-hidden="true">Séries</span><input class="num" inputmode="numeric" data-f="sets" value="${it.sets ?? ''}"></label>
-            <label><span class="sr-only">Répétitions minimum</span><span class="tpl-mini" aria-hidden="true">Reps min</span><input class="num" inputmode="numeric" data-f="rep_min" value="${it.rep_min ?? ''}"></label>
-            <label><span class="sr-only">Répétitions maximum</span><span class="tpl-mini" aria-hidden="true">Reps max</span><input class="num" inputmode="numeric" data-f="rep_max" value="${it.rep_max ?? ''}"></label>
-            <label><span class="sr-only">Repos en secondes</span><span class="tpl-mini" aria-hidden="true">Repos (s)</span><input class="num" inputmode="numeric" data-f="rest_sec" value="${it.rest_sec ?? ''}"></label>
+            <span class="tpl-ex">${esc(ex?.name || 'Exercice supprimé')}${it.circuit ? ' <span class="tag">Circuit</span>' : ''}</span>
+            ${fields}
             <button class="icon-btn" data-row-menu aria-label="Options pour ${esc(ex?.name || 'cet exercice')}">${icon('more')}</button>
           </div>`;
         }).join('')}
@@ -170,7 +237,10 @@ export function renderTemplateEdit(view, ctx, id) {
       const exId = await pickExercise();
       if (!exId) return;
       const last = t.items[t.items.length - 1];
-      t.items.push({ exercise_id: exId, sets: last?.sets ?? 3, rep_min: last?.rep_min ?? 8, rep_max: last?.rep_max ?? 12, rest_sec: last?.rest_sec ?? defRest });
+      const mode = calc.modeOf(store.get('exercises', exId));
+      if (mode === 'duree') t.items.push({ exercise_id: exId, sets: 3, target_t: 30, int_rest: null, rest_sec: 60 });
+      else if (mode === 'cardio') t.items.push({ exercise_id: exId, sets: 1, rest_sec: defRest });
+      else t.items.push({ exercise_id: exId, sets: last?.sets ?? 3, rep_min: last?.rep_min ?? 8, rep_max: last?.rep_max ?? 12, rest_sec: last?.rest_sec ?? defRest });
       save();
       draw();
       return;
@@ -180,8 +250,18 @@ export function renderTemplateEdit(view, ctx, id) {
       const items = [];
       if (i > 0) items.push({ label: 'Monter', value: 'up', icon: 'up' });
       if (i < t.items.length - 1) items.push({ label: 'Descendre', value: 'down', icon: 'down' });
+      if (calc.modeOf(store.getAny('exercises', t.items[i].exercise_id)) === 'duree') {
+        items.push({ label: t.items[i].circuit ? 'Retirer du circuit' : 'Enchaîner en circuit avec les voisins', value: 'circuit' });
+      }
       items.push({ label: 'Retirer du programme', value: 'del', danger: true, icon: 'trash' });
       const c = await menuSheet(store.getAny('exercises', t.items[i].exercise_id)?.name || 'Exercice', items);
+      if (c === 'circuit') {
+        t.items[i].circuit = !t.items[i].circuit;
+        if (t.items[i].circuit && t.items[i].int_rest == null) t.items[i].int_rest = 15;
+        save();
+        draw();
+        return;
+      }
       if (c === 'up' || c === 'down') {
         const j = c === 'up' ? i - 1 : i + 1;
         [t.items[i], t.items[j]] = [t.items[j], t.items[i]];
@@ -452,7 +532,7 @@ export function renderBackup(view, ctx) {
       await shareOrDownload(`fonte-${stamp}.json`, JSON.stringify(out, null, 1), 'application/json');
     }
     if (e.target.closest('[data-csv]')) {
-      const rows = [['date', 'seance', 'exercice', 'groupe', 'serie', 'echauffement', 'charge_kg', 'reps', 'rir', 'charge_effective_kg', 'e1rm_kg']];
+      const rows = [['date', 'seance', 'exercice', 'groupe', 'serie', 'echauffement', 'charge_kg', 'reps', 'rir', 'charge_effective_kg', 'e1rm_kg', 'duree_s', 'distance_km']];
       for (const w of calc.finishedWorkouts()) {
         const day = calc.localDay(w.started_at);
         for (const it of w.items || []) {
@@ -462,7 +542,10 @@ export function renderBackup(view, ctx) {
             const load = calc.effectiveLoad(ex, s.w, day, it.base);
             const e1 = s.warmup ? null : calc.e1rm(load, s.r);
             const n = (v) => (v == null ? '' : String(Math.round(v * 100) / 100).replace('.', ','));
-            rows.push([day, w.name, ex?.name || it.name, ex?.muscle || '', i + 1, s.warmup ? 'oui' : 'non', n(s.w), s.r, s.rir ?? '', n(load), n(e1)]);
+            const mode = calc.itemMode(it, ex);
+            rows.push([day, w.name, ex?.name || it.name, ex?.muscle || '', i + 1, s.warmup ? 'oui' : 'non',
+              mode === 'reps' ? n(s.w) : '', mode === 'reps' ? s.r : '', mode === 'reps' ? s.rir ?? '' : '',
+              mode === 'reps' ? n(load) : '', mode === 'reps' ? n(e1) : '', s.t ?? '', n(s.d)]);
           });
         }
       }
