@@ -1,13 +1,14 @@
 -- =====================================================================
 --  Fonte : schéma Supabase
 --  À coller en entier dans Supabase > SQL Editor > New query > Run.
---  Le script peut être relancé sans risque (idempotent).
+--  Le script ne supprime rien et peut être relancé sans risque.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1. Tables
---    Chaque ligne appartient à un utilisateur (user_id).
---    updated_at : horodatage de la dernière modification côté appareil
+-- 1. Tables, avec la sécurité au niveau des lignes (RLS) activée
+--    juste après chaque création.
+--    user_id    : propriétaire de la ligne
+--    updated_at : dernière modification côté appareil
 --    synced_at  : horodatage serveur, sert de curseur de synchronisation
 --    deleted    : suppression logique, pour propager les suppressions
 -- ---------------------------------------------------------------------
@@ -24,6 +25,7 @@ create table if not exists public.exercises (
   deleted     boolean not null default false,
   synced_at   timestamptz not null default now()
 );
+alter table public.exercises enable row level security;
 
 create table if not exists public.templates (
   id          uuid primary key,
@@ -36,6 +38,7 @@ create table if not exists public.templates (
   deleted     boolean not null default false,
   synced_at   timestamptz not null default now()
 );
+alter table public.templates enable row level security;
 
 create table if not exists public.workouts (
   id           uuid primary key,
@@ -50,6 +53,7 @@ create table if not exists public.workouts (
   deleted      boolean not null default false,
   synced_at    timestamptz not null default now()
 );
+alter table public.workouts enable row level security;
 
 create table if not exists public.bodyweights (
   user_id     uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -60,6 +64,7 @@ create table if not exists public.bodyweights (
   synced_at   timestamptz not null default now(),
   primary key (user_id, day)
 );
+alter table public.bodyweights enable row level security;
 
 -- Index pour la synchronisation (lecture des lignes modifiées depuis X)
 create index if not exists exercises_sync_idx   on public.exercises   (user_id, synced_at);
@@ -68,7 +73,41 @@ create index if not exists workouts_sync_idx    on public.workouts    (user_id, 
 create index if not exists bodyweights_sync_idx on public.bodyweights (user_id, synced_at);
 
 -- ---------------------------------------------------------------------
--- 2. Trigger de synchronisation
+-- 2. Règles d'accès : chaque utilisateur connecté ne lit et n'écrit
+--    que ses propres lignes. Aucune règle pour les visiteurs non
+--    connectés (rôle anon) : ils n'ont accès à rien.
+--    (Postgres n'a pas de « create or replace policy » : chaque règle
+--    n'est créée que si elle n'existe pas encore.)
+-- ---------------------------------------------------------------------
+
+do $$
+begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'exercises' and policyname = 'Mes lignes uniquement') then
+    create policy "Mes lignes uniquement" on public.exercises for all to authenticated
+      using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'templates' and policyname = 'Mes lignes uniquement') then
+    create policy "Mes lignes uniquement" on public.templates for all to authenticated
+      using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'workouts' and policyname = 'Mes lignes uniquement') then
+    create policy "Mes lignes uniquement" on public.workouts for all to authenticated
+      using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  end if;
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'bodyweights' and policyname = 'Mes lignes uniquement') then
+    create policy "Mes lignes uniquement" on public.bodyweights for all to authenticated
+      using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+  end if;
+end;
+$$;
+
+grant select, insert, update, delete on public.exercises   to authenticated;
+grant select, insert, update, delete on public.templates   to authenticated;
+grant select, insert, update, delete on public.workouts    to authenticated;
+grant select, insert, update, delete on public.bodyweights to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 3. Trigger de synchronisation
 --    - pose synced_at à l'heure du serveur à chaque écriture
 --    - « la dernière modification gagne » : une version plus ancienne
 --      envoyée par un appareil resté hors ligne n'écrase pas une version
@@ -89,37 +128,24 @@ begin
 end;
 $$;
 
-do $$
-declare t text;
-begin
-  foreach t in array array['exercises', 'templates', 'workouts', 'bodyweights'] loop
-    execute format('drop trigger if exists fonte_before_write on public.%I', t);
-    execute format(
-      'create trigger fonte_before_write before insert or update on public.%I
-         for each row execute function public.fonte_before_write()', t);
-  end loop;
-end;
-$$;
+create or replace trigger fonte_before_write before insert or update on public.exercises
+  for each row execute function public.fonte_before_write();
+create or replace trigger fonte_before_write before insert or update on public.templates
+  for each row execute function public.fonte_before_write();
+create or replace trigger fonte_before_write before insert or update on public.workouts
+  for each row execute function public.fonte_before_write();
+create or replace trigger fonte_before_write before insert or update on public.bodyweights
+  for each row execute function public.fonte_before_write();
 
 -- ---------------------------------------------------------------------
--- 3. Sécurité : Row Level Security
---    Chaque utilisateur connecté ne lit et n'écrit que ses propres lignes.
---    Les visiteurs non connectés (rôle anon) n'ont accès à rien.
+-- 4. Vérification : les 4 lignes doivent afficher rls_active = true
+--    et regles = 1.
 -- ---------------------------------------------------------------------
 
-do $$
-declare t text;
-begin
-  foreach t in array array['exercises', 'templates', 'workouts', 'bodyweights'] loop
-    execute format('alter table public.%I enable row level security', t);
-    execute format('drop policy if exists "Mes lignes uniquement" on public.%I', t);
-    execute format(
-      'create policy "Mes lignes uniquement" on public.%I
-         for all to authenticated
-         using (user_id = (select auth.uid()))
-         with check (user_id = (select auth.uid()))', t);
-    execute format('revoke all on public.%I from anon', t);
-    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
-  end loop;
-end;
-$$;
+select c.relname as table_name,
+       c.relrowsecurity as rls_active,
+       (select count(*) from pg_policies p where p.schemaname = 'public' and p.tablename = c.relname) as regles
+from pg_class c
+where c.relnamespace = 'public'::regnamespace
+  and c.relname in ('exercises', 'templates', 'workouts', 'bodyweights')
+order by c.relname;

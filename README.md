@@ -37,7 +37,10 @@ Durée totale de mise en route : 30 à 45 minutes, une seule fois.
    - Nom : `fonte`
    - Mot de passe de la base : génère-le et garde-le dans ton gestionnaire de mots de passe (l'app n'en a pas besoin)
    - Région : **West EU (Paris)** ou la plus proche
-2. Une fois le projet prêt, ouvre **SQL Editor**, clique sur **New query**, colle le contenu du fichier `supabase/schema.sql` et clique sur **Run**. Le message `Success. No rows returned` confirme la création des tables et des règles de sécurité.
+2. Une fois le projet prêt, ouvre **SQL Editor**, clique sur **New query**, colle le contenu du fichier `supabase/schema.sql` et clique sur **Run**.
+3. Le résultat affiche un tableau de 4 lignes (`bodyweights`, `exercises`, `templates`, `workouts`). Vérifie que chacune indique `rls_active = true` et `regles = 1` : les tables sont créées et protégées.
+
+   Si Supabase affiche un avertissement **Potential issues detected** avant l'exécution, tu peux confirmer le lancement. Le script ne supprime aucune donnée. Les seules mentions de suppression sont `on delete cascade` (tes lignes disparaissent si ton compte est supprimé) et le droit `delete` accordé à ton compte connecté. La sécurité au niveau des lignes (RLS) est activée juste après chaque création de table, et le tableau final permet de le vérifier.
 
 ## Étape 3 : connexion par code email
 
