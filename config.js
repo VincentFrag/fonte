@@ -5,6 +5,6 @@
 // Laisse vide pour utiliser l'app sans synchro (données sur l'appareil uniquement).
 
 window.FONTE_CONFIG = {
-  supabaseUrl: '',  // ex. 'https://kjlpavfrikmruardqkoj.supabase.co'
-  supabaseKey: '',  // ex. 'sb_publishable_3rMHt7xOerlTburnGV7CAQ_-vqQaAjA' (ou l'ancienne clé « anon »)
+  supabaseUrl: 'https://kjlpavfrikmruardqkoj.supabase.co'
+  supabaseKey: 'sb_publishable_3rMHt7xOerlTburnGV7CAQ_-vqQaAjA'
 };
