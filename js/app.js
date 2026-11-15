@@ -12,7 +12,7 @@ import {
   renderAccount, renderSettings, renderBackup, renderHelp,
 } from './views/more.js';
 
-const APP_VERSION = '1.5.0';
+const APP_VERSION = '1.5.1';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],

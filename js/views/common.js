@@ -190,3 +190,53 @@ export function platesHtml(total, ex, base = null) {
   return `<span class="bar-glyph" aria-hidden="true"><span class="bar-sleeve"></span>${glyphs}<span class="bar-collar"></span><span class="bar-tip"></span></span>
     <span class="plates-text">Barre ${calc.fmt(bar)} kg, par côté : ${res.plates.map((p) => calc.fmt(p)).join(' + ')}${res.rest ? ` <em>(reste ${calc.fmt(res.rest)} kg)</em>` : ''}</span>`;
 }
+
+// Vidéo de référence d'un exercice : coller un lien YouTube (vidéo ou short).
+export function videoSheet(ex) {
+  const has = Boolean(calc.validVideoUrl(ex.video_url));
+  const canPaste = Boolean(navigator.clipboard?.readText);
+  return openSheet({
+    title: 'Ma vidéo de référence',
+    body: `<p class="sheet-text first">${esc(ex.name)}</p>
+      <ol class="steps">
+        <li>Sur YouTube, ouvre la vidéo ou le short qui te sert de modèle.</li>
+        <li>Touche <strong>Partager</strong>, puis <strong>Copier le lien</strong>.</li>
+        <li>Reviens ici et colle le lien.</li>
+      </ol>
+      <label class="field"><span>Lien de la vidéo</span>
+        <span class="inline-input"><input type="url" name="video_url" inputmode="url" autocapitalize="off" autocomplete="off"
+          placeholder="https://youtube.com/shorts/…" value="${esc(ex.video_url || '')}">
+          ${canPaste ? '<button class="btn" type="button" data-paste>Coller</button>' : ''}</span></label>`,
+    onMount(el) {
+      el.querySelector('[data-paste]')?.addEventListener('click', async () => {
+        try {
+          const t = await navigator.clipboard.readText();
+          const url = calc.extractUrl(t);
+          if (url) el.querySelector('[name=video_url]').value = url;
+          else toast('Le presse-papiers ne contient pas de lien.');
+        } catch {
+          toast('Colle le lien à la main : appui long dans le champ, puis Coller.');
+        }
+      });
+    },
+    actions: [
+      ...(has ? [{ label: 'Retirer', value: 'remove' }] : [{ label: 'Annuler', value: null }]),
+      {
+        label: 'Enregistrer',
+        kind: 'primary',
+        handler(el) {
+          const raw = el.querySelector('[name=video_url]').value;
+          const url = calc.validVideoUrl(calc.extractUrl(raw) || raw);
+          if (!url) {
+            toast('Colle un lien qui commence par https://');
+            return false;
+          }
+          return store.save('exercises', { ...ex, video_url: url });
+        },
+      },
+    ],
+  }).then((r) => {
+    if (r === 'remove') return store.save('exercises', { ...ex, video_url: null });
+    return r || null;
+  });
+}

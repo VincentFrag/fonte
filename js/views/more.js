@@ -3,7 +3,7 @@ import * as store from '../store.js';
 import * as calc from '../calc.js';
 import * as sync from '../sync.js';
 import { esc, icon, toast, confirmSheet, menuSheet, formData, openSheet } from '../ui.js';
-import { sortedExercises, exerciseListHtml, editExercise, pickExercise, addBaseExercises } from './common.js';
+import { sortedExercises, exerciseListHtml, editExercise, pickExercise, addBaseExercises, videoSheet } from './common.js';
 import { startWorkout, activeWorkout } from './workout.js';
 import * as presets from '../presets.js';
 
@@ -75,7 +75,8 @@ export function renderExercises(view, ctx) {
       const c = await menuSheet(ex.name, [
         { label: 'Modifier', value: 'edit', icon: 'edit' },
         { label: 'Voir la progression', value: 'prog' },
-        { label: 'Voir la technique', value: 'video', icon: 'play' },
+        { label: calc.validVideoUrl(ex.video_url) ? 'Voir ma vidéo de référence' : 'Voir la technique', value: 'video', icon: 'play' },
+        { label: calc.validVideoUrl(ex.video_url) ? 'Changer ma vidéo de référence' : 'Ajouter ma vidéo de référence', value: 'setvideo' },
         { label: 'Supprimer', value: 'del', danger: true, icon: 'trash' },
       ]);
       if (c === 'edit') {
@@ -84,6 +85,9 @@ export function renderExercises(view, ctx) {
         ctx.go(`/progres/${ex.id}`);
       } else if (c === 'video') {
         window.open(calc.techniqueUrl(ex), '_blank', 'noopener');
+      } else if (c === 'setvideo') {
+        const saved = await videoSheet(ex);
+        if (saved) toast(saved.video_url ? 'Vidéo de référence enregistrée.' : 'Vidéo de référence retirée.');
       } else if (c === 'del') {
         const used = calc.exerciseHistory(ex.id).length;
         const ok = await confirmSheet('Supprimer l’exercice', used
@@ -580,6 +584,7 @@ const TUTOS = [
   ['2-faire-une-seance', 'Faire une séance', 'Charges pré-remplies, choix de la barre, repos, records et bilan.'],
   ['3-minuteur-hiit', 'Le minuteur HIIT', 'Efforts et récups enchaînés, avec les séries cochées pour toi.'],
   ['4-progression', 'Suivre sa progression', 'Records, courbes par exercice et poids de corps.'],
+  ['5-video-de-reference', 'Ajouter ta vidéo de référence', 'Enregistrer un short YouTube sur un exercice pour le retrouver à chaque séance.'],
 ];
 
 export function renderHelp(view, ctx) {

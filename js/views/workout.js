@@ -3,7 +3,7 @@ import * as store from '../store.js';
 import * as calc from '../calc.js';
 import * as sync from '../sync.js';
 import { esc, icon, openSheet, confirmSheet, menuSheet, toast, debounce, formData } from '../ui.js';
-import { pickExercise, platesHtml, workoutRowHtml } from './common.js';
+import { pickExercise, platesHtml, workoutRowHtml, videoSheet } from './common.js';
 import { runIntervals } from '../timer.js';
 
 export function activeWorkout() {
@@ -232,7 +232,7 @@ function editor(view, ctx, original, { live }) {
                <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(calc.baseLabel(base))}${icon('down')}</button>`
             : `<h2 class="ex-name">${esc(name)}</h2>${item.circuit ? '<span class="tag">Circuit</span>' : ''}`}
           <p class="ex-meta">${esc(targetText(item, mode))}</p>
-          <a class="tech-link" href="${esc(calc.techniqueUrl(ex, name))}" target="_blank" rel="noopener noreferrer">${icon('play')}<span>Voir la technique</span></a>
+          <a class="tech-link" href="${esc(calc.techniqueUrl(ex, name))}" target="_blank" rel="noopener noreferrer">${icon('play')}<span>${calc.validVideoUrl(ex?.video_url) ? 'Voir ma vidéo de référence' : 'Voir la technique'}</span></a>
         </div>
         <button class="icon-btn" data-item-menu aria-label="Options de l'exercice ${esc(name)}">${icon('more')}</button>
       </header>
@@ -401,6 +401,8 @@ function editor(view, ctx, original, { live }) {
         items.push({ label: item.circuit ? 'Retirer du circuit' : 'Enchaîner en circuit avec les voisins', value: 'circuit' });
       }
       items.push({ label: 'Voir la progression', value: 'progress' });
+      const exo = store.get('exercises', item.exercise_id);
+      if (exo) items.push({ label: calc.validVideoUrl(exo.video_url) ? 'Changer ma vidéo de référence' : 'Ajouter ma vidéo de référence', value: 'video', icon: 'play' });
       items.push({ label: 'Retirer de la séance', value: 'remove', danger: true, icon: 'trash' });
       const name = store.getAny('exercises', item.exercise_id)?.name || item.name;
       const c = await menuSheet(name, items);
@@ -412,6 +414,12 @@ function editor(view, ctx, original, { live }) {
         const v = await restSheet(item.rest_sec || s.rest);
         if (v) {
           item.rest_sec = v;
+          rerender();
+        }
+      } else if (c === 'video') {
+        const saved = await videoSheet(store.get('exercises', item.exercise_id));
+        if (saved) {
+          toast(saved.video_url ? 'Vidéo de référence enregistrée.' : 'Vidéo de référence retirée.');
           rerender();
         }
       } else if (c === 'circuit') {

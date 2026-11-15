@@ -92,9 +92,11 @@ La pastille en haut à droite indique l'état de la synchro : **Synchronisé**, 
 
 ## Tutoriels
 
-| Ajouter un programme tout fait | Faire une séance | Le minuteur HIIT | Suivre sa progression |
-|:---:|:---:|:---:|:---:|
-| ![Ajouter un programme tout fait](docs/tutos/1-programme-tout-fait.gif) | ![Faire une séance](docs/tutos/2-faire-une-seance.gif) | ![Le minuteur HIIT](docs/tutos/3-minuteur-hiit.gif) | ![Suivre sa progression](docs/tutos/4-progression.gif) |
+| Ajouter un programme tout fait | Faire une séance | Le minuteur HIIT |
+|:---:|:---:|:---:|
+| ![Ajouter un programme tout fait](docs/tutos/1-programme-tout-fait.gif) | ![Faire une séance](docs/tutos/2-faire-une-seance.gif) | ![Le minuteur HIIT](docs/tutos/3-minuteur-hiit.gif) |
+| **Suivre sa progression** | **Ajouter ta vidéo de référence** | |
+| ![Suivre sa progression](docs/tutos/4-progression.gif) | ![Ajouter ta vidéo de référence](docs/tutos/5-video-de-reference.gif) | |
 
 Ces vidéos sont aussi dans l'app : **Plus > Aide et tutoriels**.
 
@@ -106,7 +108,7 @@ Ces vidéos sont aussi dans l'app : **Plus > Aide et tutoriels**.
 2. Pour composer tes propres séances : **Plus > Exercices** (le bouton **Ajouter les exercices courants** donne une liste de base), puis **Plus > Programmes > Nouveau**. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
 3. **Séance** : touche un programme pour démarrer. Les charges de la dernière fois sont pré-remplies. Coche ✓ chaque série terminée : le minuteur de repos démarre.
 4. Pendant la séance, touche le **nom d'un exercice** pour choisir sa charge de départ : une barre (olympique, EZ, trap bar… ou un poids personnalisé), le **poids du corps** (tu saisis alors le lest) ou **sans barre**. Le choix est retenu pour les séances suivantes.
-5. Sous le nom de chaque exercice, **Voir la technique** ouvre une vidéo YouTube de l'exercice. Par défaut, c'est une recherche sur son nom ; tu peux enregistrer ta propre vidéo de référence dans la fiche de l'exercice (**Plus > Exercices**).
+5. Sous le nom de chaque exercice, **Voir la technique** lance une recherche YouTube sur l'exercice. Quand tu trouves une vidéo ou un short qui te sert de modèle, copie son lien (**Partager > Copier le lien**), puis menu **⋯** de l'exercice > **Ajouter ma vidéo de référence** > **Coller**. Le lien devient **Voir ma vidéo de référence**, sur tous tes appareils.
 6. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
 7. **Exercices en durée** (gainage, HIIT) : touche **Lancer le minuteur**. Il enchaîne efforts et récups avec des signaux sonores et coche les séries tout seul. Dans un programme, le menu **⋯** d'un exercice permet de l'**enchaîner en circuit** avec ses voisins : le minuteur tourne alors entre eux, tour après tour.
 8. **Cardio** : saisis la durée en minutes et la distance en km ; l'app calcule l'allure et la vitesse.

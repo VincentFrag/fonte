@@ -574,6 +574,11 @@ export function validVideoUrl(url) {
   return /^https:\/\/[^\s]+$/i.test(u) ? u : null;
 }
 
+export function extractUrl(text) {
+  const m = String(text || '').match(/https:\/\/[^\s"'<>]+/i);
+  return m ? m[0] : null;
+}
+
 export function techniqueUrl(ex, fallbackName = '') {
   const own = validVideoUrl(ex?.video_url);
   if (own) return own;
