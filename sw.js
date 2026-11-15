@@ -1,7 +1,7 @@
 // Service worker : met l'app en cache pour qu'elle s'ouvre sans réseau.
 // À CHAQUE MODIFICATION DES FICHIERS, augmente ce numéro de version
 // pour que les appareils récupèrent la nouvelle version.
-const VERSION = 'fonte-v1.3.0';
+const VERSION = 'fonte-v1.3.1';
 
 const ASSETS = [
   './',
@@ -27,8 +27,10 @@ const ASSETS = [
   './icons/apple-touch-icon.png',
 ];
 
+// cache: 'reload' : on télécharge toujours les fichiers frais, jamais une copie
+// gardée par le navigateur (GitHub Pages autorise 10 minutes de cache).
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS)));
+  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(ASSETS.map((u) => new Request(u, { cache: 'reload' })))));
 });
 
 self.addEventListener('activate', (event) => {
@@ -48,6 +50,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // Supabase et autres : réseau direct
+  if (url.pathname.endsWith('/sw.js')) return; // vérification de version : toujours le réseau
 
   // config.js : réseau d'abord, en contournant le cache HTTP du navigateur,
   // pour prendre en compte une modification tout de suite

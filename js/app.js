@@ -12,7 +12,7 @@ import {
   renderAccount, renderSettings, renderBackup,
 } from './views/more.js';
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -288,34 +288,92 @@ function canUpdateSilently() {
 
 let swReg = null;
 let applyUpdate = null;
+const HARD_KEY = 'fonte-hard-refresh';
+
+// Lit la version publiée sur le serveur en contournant tous les caches.
+async function publishedSw() {
+  const res = await fetch(`./sw.js?v=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  const version = (text.match(/VERSION = 'fonte-v([^']+)'/) || [])[1] || null;
+  return { text, version };
+}
+
+// Solution de secours si le navigateur ne voit pas la nouvelle version (iPhone) :
+// on retélécharge chaque fichier de l'app sans cache, on vide le cache hors ligne,
+// puis on recharge. Limité à une fois toutes les 5 minutes pour éviter toute boucle.
+async function hardRefresh(swText) {
+  try {
+    const last = Number(localStorage.getItem(HARD_KEY) || 0);
+    if (Date.now() - last < 5 * 60 * 1000) return false;
+    localStorage.setItem(HARD_KEY, String(Date.now()));
+    sessionStorage.setItem(UPDATED_KEY, '1');
+  } catch {}
+  const list = (swText.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || '';
+  const assets = [...list.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  await Promise.all(assets.map((u) => fetch(u, { cache: 'reload' }).catch(() => {})));
+  const regs = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(regs.map((r) => r.unregister()));
+  const keys = await caches.keys();
+  await Promise.all(keys.map((k) => caches.delete(k)));
+  location.reload();
+  return true;
+}
+
+let checking = false;
+async function checkPublished({ force = false } = {}) {
+  if (checking || !swReg || !navigator.onLine) return 'skip';
+  checking = true;
+  try {
+    const pub = await publishedSw();
+    if (!pub.version || pub.version === APP_VERSION) return 'uptodate';
+    // Une version plus récente est en ligne : on demande au navigateur de l'installer
+    if (!swReg.waiting) {
+      await swReg.update().catch(() => {});
+      const w = swReg.installing;
+      if (w) {
+        await new Promise((res) => {
+          const t = setTimeout(res, 15000);
+          w.addEventListener('statechange', () => {
+            if (w.state === 'installed' || w.state === 'redundant') {
+              clearTimeout(t);
+              res();
+            }
+          });
+        });
+      }
+    }
+    if (swReg.waiting) {
+      if (force || canUpdateSilently()) {
+        applyUpdate(swReg.waiting);
+        return 'applying';
+      }
+      return 'waiting';
+    }
+    // Le navigateur n'a pas vu la nouvelle version : secours
+    if (force || canUpdateSilently()) {
+      if (await hardRefresh(pub.text)) return 'applying';
+    }
+    return 'waiting';
+  } catch {
+    return 'error';
+  } finally {
+    checking = false;
+  }
+}
 
 // Vérification déclenchée à la main depuis l'écran Plus.
-// Renvoie 'applying' (rechargement imminent), 'uptodate' ou 'unsupported'.
+// Renvoie 'applying' (rechargement imminent), 'uptodate', 'waiting', 'error' ou 'unsupported'.
 ctx.checkUpdate = async () => {
   if (!swReg) return 'unsupported';
   if (swReg.waiting) {
     applyUpdate(swReg.waiting);
     return 'applying';
   }
-  await swReg.update();
-  const w = swReg.installing || swReg.waiting;
-  if (!w) return 'uptodate';
-  if (w.state !== 'installed') {
-    await new Promise((res) => {
-      const t = setTimeout(res, 15000);
-      w.addEventListener('statechange', () => {
-        if (w.state === 'installed' || w.state === 'redundant') {
-          clearTimeout(t);
-          res();
-        }
-      });
-    });
-  }
-  if (swReg.waiting) {
-    applyUpdate(swReg.waiting);
-    return 'applying';
-  }
-  return 'uptodate';
+  try { localStorage.removeItem(HARD_KEY); } catch {}
+  const r = await checkPublished({ force: true });
+  if (r === 'error') throw new Error('réseau');
+  return r === 'skip' ? 'uptodate' : r;
 };
 
 function registerSW() {
@@ -327,7 +385,7 @@ function registerSW() {
     worker.postMessage('skipWaiting');
   };
   applyUpdate = (worker) => apply(worker);
-  navigator.serviceWorker.register('./sw.js').then((reg) => {
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
     swReg = reg;
     let asked = false;
     const ask = (worker) => {
@@ -348,13 +406,26 @@ function registerSW() {
       });
     });
 
-    let lastCheck = Date.now();
-    const check = () => {
+    let lastCheck = 0;
+    const check = async () => {
       if (reg.waiting && navigator.serviceWorker.controller) return ask(reg.waiting);
-      if (Date.now() - lastCheck < 30 * 1000) return;
+      if (Date.now() - lastCheck < 15 * 1000) return;
       lastCheck = Date.now();
-      reg.update().catch(() => {});
+      const r = await checkPublished();
+      if (r === 'waiting') {
+        if (reg.waiting) ask(reg.waiting);
+        else if (!asked) {
+          asked = true;
+          toast('Nouvelle version disponible.', {
+            action: 'Mettre à jour',
+            duration: 0,
+            onAction: () => ctx.checkUpdate(),
+          });
+        }
+      }
     };
+    setTimeout(check, 3000);
+    window.addEventListener('pageshow', (e) => e.persisted && check());
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') check();
     });
