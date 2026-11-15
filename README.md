@@ -91,6 +91,12 @@ Sur chaque appareil : **Plus > Compte et synchronisation**, saisis l'email et le
 
 La synchro sert déjà de sauvegarde, mais l'offre gratuite de Supabase n'inclut pas de sauvegarde automatique. Une fois par mois, fais **Plus > Sauvegarde > Exporter en JSON** et range le fichier dans iCloud Drive ou Google Drive. Le même écran permet de réimporter ce fichier et d'exporter tes séries en CSV pour Excel.
 
+## Passer à la version 1.1 (barre par exercice)
+
+1. Dans Supabase, **SQL Editor > New query**, colle le contenu de `supabase/migration-1.1.sql` et clique sur **Run**. Ça ajoute une colonne pour le poids de barre ; aucune donnée n'est modifiée.
+2. Ensuite seulement, envoie les nouveaux fichiers sur GitHub (tout sauf `config.js`).
+3. Dans l'app, **Plus > Exercices**, touche un exercice à la barre, puis **Modifier** : choisis sa barre (olympique 20 kg, EZ 10 kg…) ou saisis son poids exact.
+
 ## Mettre à jour l'app
 
 Si tu modifies un fichier (seul ou avec Claude), augmente le numéro de version en haut de `sw.js` (par exemple `fonte-v1.0.1`). Au prochain lancement, l'app affiche **Nouvelle version disponible** : touche **Mettre à jour**. Sans ce changement de numéro, les appareils gardent l'ancienne version en cache. Seule exception : `config.js` est toujours relu sur le réseau.

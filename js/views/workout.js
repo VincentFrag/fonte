@@ -182,7 +182,7 @@ function editor(view, ctx, original, { live }) {
       </header>
       ${item.progressed && !item.sets.some((x) => x.done) ? `<p class="ex-hint">Toutes tes séries ont atteint ${item.rep_max} reps la dernière fois : charge augmentée de ${esc(calc.fmt(item.progressed))} kg.</p>` : ''}
       ${ex?.notes ? `<p class="ex-notes">${esc(ex.notes)}</p>` : ''}
-      ${barbell ? `<div class="plates" data-plates>${platesHtml(nextWeight(item))}</div>` : ''}
+      ${barbell ? `<div class="plates" data-plates>${platesHtml(nextWeight(item), ex)}</div>` : ''}
       <div class="sets ${s.showRir ? 'with-rir' : ''}">
         <div class="set-head" aria-hidden="true"><span>Série</span><span>Précédent</span><span>${pdc ? 'Lest' : 'kg'}</span><span>Reps</span>${s.showRir ? '<span>RIR</span>' : ''}<span></span></div>
         ${rows}
@@ -225,7 +225,7 @@ function editor(view, ctx, original, { live }) {
     set[inp.dataset.field] = inp.dataset.field === 'w' ? v : v == null ? null : Math.max(0, Math.round(v));
     if (inp.dataset.field === 'w') {
       const p = inp.closest('[data-item]').querySelector('[data-plates]');
-      if (p) p.innerHTML = platesHtml(nextWeight(item));
+      if (p) p.innerHTML = platesHtml(nextWeight(item), store.getAny('exercises', item.exercise_id));
     }
     pending = true;
     saveSoon();

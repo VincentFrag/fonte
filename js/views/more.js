@@ -305,7 +305,8 @@ export function renderSettings(view, ctx) {
       <label class="switch"><input type="checkbox" name="sound" ${s.sound ? 'checked' : ''}><span>Son à la fin du repos<small>Sur iPhone, le son ne joue que si l'app est au premier plan et le mode silencieux désactivé.</small></span></label>
       <label class="switch"><input type="checkbox" name="wakeLock" ${s.wakeLock ? 'checked' : ''}><span>Garder l'écran allumé pendant la séance</span></label>
       <h2 class="block-title">Barre et disques</h2>
-      <label class="field"><span>Poids de la barre (kg)</span><input name="bar" inputmode="decimal" value="${String(s.bar).replace('.', ',')}"></label>
+      <label class="field"><span>Poids de barre par défaut (kg)</span><input name="bar" inputmode="decimal" value="${String(s.bar).replace('.', ',')}">
+        <small>Utilisé pour les exercices à la barre sans poids de barre précisé. Chaque exercice peut avoir sa propre barre : Plus > Exercices > Modifier.</small></label>
       <label class="field"><span>Disques disponibles (kg, séparés par des espaces)</span><input name="plates" value="${esc(s.plates.map((p) => String(p).replace('.', ',')).join(' '))}">
         <small>Sert à afficher les disques à charger de chaque côté pour les exercices à la barre.</small></label>
       <h2 class="block-title">Affichage</h2>

@@ -20,12 +20,14 @@ create table if not exists public.exercises (
   muscle      text,
   equipment   text,
   increment   numeric,
+  bar_weight  numeric,
   notes       text,
   updated_at  timestamptz not null default now(),
   deleted     boolean not null default false,
   synced_at   timestamptz not null default now()
 );
 alter table public.exercises enable row level security;
+alter table public.exercises add column if not exists bar_weight numeric; -- ajout version 1.1
 
 create table if not exists public.templates (
   id          uuid primary key,

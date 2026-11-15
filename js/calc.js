@@ -430,6 +430,18 @@ export const PLATE_COLORS = {
   2.5: '#D3262B', 2: '#1F5BB8', 1.5: '#EDBB12', 1.25: '#AEB4BB', 1: '#1F8A48', 0.5: '#F2F3F1',
 };
 
+export function barWeightOf(ex) {
+  return ex?.bar_weight ?? settings().bar;
+}
+
+export const BAR_PRESETS = [
+  ['Olympique', 20],
+  ['Femme', 15],
+  ['EZ', 10],
+  ['Trap bar', 25],
+  ['Courte', 7],
+];
+
 export function platesFor(total, bar, available) {
   if (total == null || total < bar) return null;
   let side = (total - bar) / 2;

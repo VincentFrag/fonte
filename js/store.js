@@ -7,7 +7,7 @@ const DB_VERSION = 1;
 export const TABLES = {
   exercises: {
     key: 'id', conflict: 'id',
-    columns: ['id', 'user_id', 'name', 'muscle', 'equipment', 'increment', 'notes', 'updated_at', 'deleted'],
+    columns: ['id', 'user_id', 'name', 'muscle', 'equipment', 'increment', 'bar_weight', 'notes', 'updated_at', 'deleted'],
   },
   templates: {
     key: 'id', conflict: 'id',
@@ -151,6 +151,7 @@ export function mergeRemote(table, rows) {
     for (const c of TABLES[table].columns) row[c] = remote[c];
     if (typeof row.weight === 'string') row.weight = Number(row.weight);
     if (typeof row.increment === 'string') row.increment = Number(row.increment);
+    if (typeof row.bar_weight === 'string') row.bar_weight = Number(row.bar_weight);
     row._dirty = false;
     data[table].set(key, row);
     persist(table, row);

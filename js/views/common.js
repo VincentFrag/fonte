@@ -20,7 +20,7 @@ function groupByMuscle(list) {
 export function exerciseListHtml(list, { attr = 'data-pick' } = {}) {
   return groupByMuscle(list)
     .map(([m, l]) => `<div class="ex-group"><h3 class="group-title">${esc(m)}</h3>${l
-      .map((ex) => `<button class="list-row" ${attr}="${ex.id}"><span class="list-main">${esc(ex.name)}</span><span class="list-meta">${esc(calc.EQUIPMENT[ex.equipment] || '')}</span></button>`)
+      .map((ex) => `<button class="list-row" ${attr}="${ex.id}"><span class="list-main">${esc(ex.name)}</span><span class="list-meta">${esc(calc.EQUIPMENT[ex.equipment] || '')}${ex.equipment === 'barre' && ex.bar_weight != null ? ` ${esc(calc.fmt(ex.bar_weight))} kg` : ''}</span></button>`)
       .join('')}</div>`)
     .join('');
 }
@@ -69,6 +69,12 @@ export function editExercise(ex, presetName = '') {
         ${calc.MUSCLES.map((m) => `<option ${m === e.muscle ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></label>
       <label class="field"><span>Matériel</span><select name="equipment" data-equip>
         ${Object.entries(calc.EQUIPMENT).map(([k, v]) => `<option value="${k}" ${k === e.equipment ? 'selected' : ''}>${esc(v)}</option>`).join('')}</select></label>
+      <div class="field" data-bar-field ${e.equipment === 'barre' ? '' : 'hidden'}>
+        <label for="ex-bar">Poids de la barre (kg)</label>
+        <div class="chips tight">${calc.BAR_PRESETS.map(([n, w]) => `<button type="button" class="chip ${w === (e.bar_weight ?? calc.settings().bar) ? 'is-on' : ''}" data-bar-preset="${w}">${esc(n)} ${esc(calc.fmt(w))}</button>`).join('')}</div>
+        <input id="ex-bar" name="bar_weight" inputmode="decimal" value="${esc(String(e.bar_weight ?? calc.settings().bar).replace('.', ','))}">
+        <small>Sert au calcul des disques à charger. Les barres varient d'une salle à l'autre : pèse-la ou regarde l'étiquette.</small>
+      </div>
       <p class="field-help" data-pdc-help ${e.equipment === 'pdc' ? '' : 'hidden'}>Au poids du corps, tu saisis le lest (0 sans lest). Les calculs ajoutent ton dernier poids enregistré.</p>
       <label class="field"><span>Incrément de charge (kg)</span><input name="increment" inputmode="decimal" value="${esc(String(inc).replace('.', ','))}">
         <small>Utilisé pour proposer la charge suivante quand tu atteins le haut de ta fourchette de répétitions.</small></label>
@@ -78,7 +84,14 @@ export function editExercise(ex, presetName = '') {
       const sel = el.querySelector('[data-equip]');
       sel.addEventListener('change', () => {
         el.querySelector('[data-pdc-help]').hidden = sel.value !== 'pdc';
+        el.querySelector('[data-bar-field]').hidden = sel.value !== 'barre';
         el.querySelector('[name=increment]').value = String(calc.defaultIncrement(sel.value)).replace('.', ',');
+      });
+      el.addEventListener('click', (ev) => {
+        const b = ev.target.closest('[data-bar-preset]');
+        if (!b) return;
+        el.querySelector('[name=bar_weight]').value = b.dataset.barPreset.replace('.', ',');
+        el.querySelectorAll('[data-bar-preset]').forEach((x) => x.classList.toggle('is-on', x === b));
       });
       el.querySelector('[data-form]').addEventListener('submit', (ev) => {
         ev.preventDefault();
@@ -108,6 +121,7 @@ export function editExercise(ex, presetName = '') {
             muscle: f.muscle,
             equipment: f.equipment,
             increment: calc.parseNum(f.increment) ?? calc.defaultIncrement(f.equipment),
+            bar_weight: f.equipment === 'barre' ? (calc.parseNum(f.bar_weight) ?? calc.settings().bar) : (ex?.bar_weight ?? null),
             notes: f.notes.trim(),
           });
         },
@@ -148,12 +162,13 @@ export function setText(ex, w, r) {
 }
 
 // Disques à charger de chaque côté de la barre
-export function platesHtml(total) {
+export function platesHtml(total, ex) {
   const s = calc.settings();
-  const res = calc.platesFor(total, s.bar, s.plates);
+  const bar = calc.barWeightOf(ex);
+  const res = calc.platesFor(total, bar, s.plates);
   if (total == null) return '';
-  if (!res) return `<span class="plates-text">Moins que la barre (${calc.fmt(s.bar)} kg)</span>`;
-  if (!res.plates.length) return `<span class="plates-text">Barre seule (${calc.fmt(s.bar)} kg)</span>`;
+  if (!res) return `<span class="plates-text">Moins que la barre (${calc.fmt(bar)} kg)</span>`;
+  if (!res.plates.length) return `<span class="plates-text">Barre seule (${calc.fmt(bar)} kg)</span>`;
   const maxP = Math.max(...s.plates);
   const glyphs = res.plates
     .map((p) => {
@@ -163,5 +178,5 @@ export function platesHtml(total) {
     })
     .join('');
   return `<span class="bar-glyph" aria-hidden="true"><span class="bar-sleeve"></span>${glyphs}<span class="bar-collar"></span><span class="bar-tip"></span></span>
-    <span class="plates-text">Par côté : ${res.plates.map((p) => calc.fmt(p)).join(' + ')}${res.rest ? ` <em>(reste ${calc.fmt(res.rest)} kg)</em>` : ''}</span>`;
+    <span class="plates-text">Barre ${calc.fmt(bar)} kg, par côté : ${res.plates.map((p) => calc.fmt(p)).join(' + ')}${res.rest ? ` <em>(reste ${calc.fmt(res.rest)} kg)</em>` : ''}</span>`;
 }
