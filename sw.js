@@ -49,7 +49,8 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // Supabase et autres : réseau direct
 
-  // config.js : réseau d'abord, pour prendre en compte une modification tout de suite
+  // config.js : réseau d'abord, en contournant le cache HTTP du navigateur,
+  // pour prendre en compte une modification tout de suite
   if (url.pathname.endsWith('/config.js')) {
     event.respondWith(
       fetch(req, { cache: 'no-store' })
