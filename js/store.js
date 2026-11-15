@@ -7,7 +7,7 @@ const DB_VERSION = 1;
 export const TABLES = {
   exercises: {
     key: 'id', conflict: 'id',
-    columns: ['id', 'user_id', 'name', 'muscle', 'equipment', 'increment', 'bar_weight', 'notes', 'updated_at', 'deleted'],
+    columns: ['id', 'user_id', 'name', 'muscle', 'equipment', 'increment', 'bar_weight', 'video_url', 'notes', 'updated_at', 'deleted'],
   },
   templates: {
     key: 'id', conflict: 'id',

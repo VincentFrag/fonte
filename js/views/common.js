@@ -78,6 +78,8 @@ export function editExercise(ex, presetName = '') {
       <p class="field-help" data-pdc-help ${e.equipment === 'pdc' ? '' : 'hidden'}>Au poids du corps, tu saisis le lest (0 sans lest). Les calculs ajoutent ton dernier poids enregistré.</p>
       <label class="field" data-inc-field ${['duree', 'cardio'].includes(e.equipment) ? 'hidden' : ''}><span>Incrément de charge (kg)</span><input name="increment" inputmode="decimal" value="${esc(String(inc).replace('.', ','))}">
         <small>Utilisé pour proposer la charge suivante quand tu atteins le haut de ta fourchette de répétitions.</small></label>
+      <label class="field"><span>Vidéo de technique (facultatif)</span><input type="url" name="video_url" inputmode="url" autocapitalize="off" placeholder="https://www.youtube.com/watch?v=…" value="${esc(e.video_url || '')}">
+        <small>Colle le lien d'une vidéo qui te convient. Sans lien, le bouton « Voir la technique » lance une recherche YouTube sur le nom de l'exercice.</small></label>
       <label class="field"><span>Notes</span><textarea name="notes" rows="2" maxlength="500" placeholder="Réglages machine, prise, tempo…">${esc(e.notes || '')}</textarea></label>
     </form>`,
     onMount(el) {
@@ -111,6 +113,12 @@ export function editExercise(ex, presetName = '') {
             el.querySelector('[name=name]').focus();
             return false;
           }
+          const rawUrl = (f.video_url || '').trim();
+          if (rawUrl && !calc.validVideoUrl(rawUrl)) {
+            toast('Le lien de la vidéo doit commencer par https://');
+            el.querySelector('[name=video_url]').focus();
+            return false;
+          }
           const dup = store.all('exercises').find((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== e.id);
           if (dup) {
             toast(`« ${dup.name} » existe déjà.`);
@@ -123,6 +131,7 @@ export function editExercise(ex, presetName = '') {
             equipment: f.equipment,
             increment: calc.parseNum(f.increment) ?? calc.defaultIncrement(f.equipment),
             bar_weight: f.equipment === 'barre' ? (calc.parseNum(f.bar_weight) ?? calc.settings().bar) : (ex?.bar_weight ?? null),
+            video_url: calc.validVideoUrl(rawUrl),
             notes: f.notes.trim(),
           });
         },

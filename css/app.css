@@ -454,6 +454,16 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .sets.mode-cardio .set-head, .sets.mode-cardio .set { grid-template-columns: 40px minmax(0, 1fr) 70px 70px 46px; }
 .ex-titles .tag { margin-top: 6px; }
 .ex-pace { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+.tech-link {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; min-height: 32px;
+  color: var(--accent); font-size: 14px; font-weight: 600; text-decoration: none;
+}
+.tech-link .icon { width: 16px; height: 16px; fill: currentColor; }
+[data-tuto] .list-main small { white-space: normal; }
+.tuto-thumb { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #C8282D; color: #fff; flex: none; }
+.tuto-thumb .icon { width: 18px; height: 18px; fill: currentColor; }
+.tuto-video { display: block; width: 100%; max-height: 70dvh; object-fit: contain; border-radius: 12px; background: #000; }
+.tech-link:hover span { text-decoration: underline; }
 .timer-btn { margin-top: 12px; width: 100%; background: #C8282D; border-color: #C8282D; color: #fff; }
 .timer-btn .icon { fill: currentColor; }
 

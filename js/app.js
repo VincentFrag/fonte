@@ -9,10 +9,10 @@ import { renderProgress, renderExerciseProgress } from './views/progress.js';
 import { renderBody } from './views/body.js';
 import {
   renderMore, renderExercises, renderTemplates, renderTemplateEdit,
-  renderAccount, renderSettings, renderBackup,
+  renderAccount, renderSettings, renderBackup, renderHelp,
 } from './views/more.js';
 
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -29,6 +29,7 @@ const routes = [
   [/^\/compte$/, renderAccount, 'plus'],
   [/^\/reglages$/, renderSettings, 'plus'],
   [/^\/sauvegarde$/, renderBackup, 'plus'],
+  [/^\/aide$/, renderHelp, 'plus'],
 ];
 
 const NAV = [

@@ -568,6 +568,19 @@ export const PLATE_COLORS = {
   2.5: '#D3262B', 2: '#1F5BB8', 1.5: '#EDBB12', 1.25: '#AEB4BB', 1: '#1F8A48', 0.5: '#F2F3F1',
 };
 
+// Vidéo de technique : le lien choisi pour l'exercice, sinon une recherche YouTube sur son nom.
+export function validVideoUrl(url) {
+  const u = String(url || '').trim();
+  return /^https:\/\/[^\s]+$/i.test(u) ? u : null;
+}
+
+export function techniqueUrl(ex, fallbackName = '') {
+  const own = validVideoUrl(ex?.video_url);
+  if (own) return own;
+  const name = ex?.name || fallbackName;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} technique exécution`)}`;
+}
+
 export function barWeightOf(ex) {
   return ex?.bar_weight ?? settings().bar;
 }

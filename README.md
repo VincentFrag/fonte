@@ -90,22 +90,35 @@ La pastille en haut à droite indique l'état de la synchro : **Synchronisé**, 
 
 ---
 
+## Tutoriels
+
+| Ajouter un programme tout fait | Faire une séance | Le minuteur HIIT | Suivre sa progression |
+|:---:|:---:|:---:|:---:|
+| ![Ajouter un programme tout fait](docs/tutos/1-programme-tout-fait.gif) | ![Faire une séance](docs/tutos/2-faire-une-seance.gif) | ![Le minuteur HIIT](docs/tutos/3-minuteur-hiit.gif) | ![Suivre sa progression](docs/tutos/4-progression.gif) |
+
+Ces vidéos sont aussi dans l'app : **Plus > Aide et tutoriels**.
+
+---
+
 ## Premiers pas
 
 1. **Plus > Programmes > Ajouter un programme tout fait** : choisis un programme du catalogue. Ses séances types et les exercices nécessaires sont créés pour toi, et tu peux tout modifier ensuite.
 2. Pour composer tes propres séances : **Plus > Exercices** (le bouton **Ajouter les exercices courants** donne une liste de base), puis **Plus > Programmes > Nouveau**. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
 3. **Séance** : touche un programme pour démarrer. Les charges de la dernière fois sont pré-remplies. Coche ✓ chaque série terminée : le minuteur de repos démarre.
 4. Pendant la séance, touche le **nom d'un exercice** pour choisir sa charge de départ : une barre (olympique, EZ, trap bar… ou un poids personnalisé), le **poids du corps** (tu saisis alors le lest) ou **sans barre**. Le choix est retenu pour les séances suivantes.
-5. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
-6. **Exercices en durée** (gainage, HIIT) : touche **Lancer le minuteur**. Il enchaîne efforts et récups avec des signaux sonores et coche les séries tout seul. Dans un programme, le menu **⋯** d'un exercice permet de l'**enchaîner en circuit** avec ses voisins : le minuteur tourne alors entre eux, tour après tour.
-7. **Cardio** : saisis la durée en minutes et la distance en km ; l'app calcule l'allure et la vitesse.
-8. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
+5. Sous le nom de chaque exercice, **Voir la technique** ouvre une vidéo YouTube de l'exercice. Par défaut, c'est une recherche sur son nom ; tu peux enregistrer ta propre vidéo de référence dans la fiche de l'exercice (**Plus > Exercices**).
+6. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
+7. **Exercices en durée** (gainage, HIIT) : touche **Lancer le minuteur**. Il enchaîne efforts et récups avec des signaux sonores et coche les séries tout seul. Dans un programme, le menu **⋯** d'un exercice permet de l'**enchaîner en circuit** avec ses voisins : le minuteur tourne alors entre eux, tour après tour.
+8. **Cardio** : saisis la durée en minutes et la distance en km ; l'app calcule l'allure et la vitesse.
+9. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
 
 ---
 
 ## Mises à jour
 
 **Récupérer les nouvelles versions de Fonte.** Quand le dépôt d'origine évolue, ton dépôt affiche « This branch is X commits behind ». Clique sur **Sync fork**, puis **Update branch**. Ton `config.js` est conservé.
+
+**Mises à jour qui demandent un script SQL.** Certaines versions ajoutent une colonne à la base. Le dossier `supabase/` contient alors un fichier `migration-X.Y.sql` : si tu avais installé Fonte avant cette version, colle-le dans **SQL Editor** et clique sur **Run** avant de faire **Sync fork**. Une nouvelle installation n'en a pas besoin, `schema.sql` contient déjà tout.
 
 Un conflit n'arrive que si `config.js` a aussi été modifié dans le dépôt d'origine. Si GitHub en signale un, ne clique pas sur **Discard commits**, car tu perdrais ta configuration : garde tes propres valeurs d'URL et de clé.
 
@@ -180,6 +193,8 @@ fonte/
 │   ├── ui.js               Feuilles, menus, notifications
 │   └── views/              Un fichier par écran
 ├── supabase/schema.sql     Tables, synchro et règles de sécurité
+├── supabase/migration-*.sql  Mises à jour de la base pour les installations existantes
+├── docs/tutos/             Tutoriels vidéo (MP4 pour l'app, GIF pour ce guide)
 ├── vendor/supabase.js      Bibliothèque Supabase, copiée localement
 ├── fonts/                  Police Archivo (licence OFL)
 └── icons/                  Icônes de l'app

@@ -21,6 +21,7 @@ create table if not exists public.exercises (
   equipment   text,
   increment   numeric,
   bar_weight  numeric,
+  video_url   text,
   notes       text,
   updated_at  timestamptz not null default now(),
   deleted     boolean not null default false,
@@ -28,6 +29,7 @@ create table if not exists public.exercises (
 );
 alter table public.exercises enable row level security;
 alter table public.exercises add column if not exists bar_weight numeric; -- ajout version 1.1
+alter table public.exercises add column if not exists video_url text;    -- ajout version 1.5
 
 create table if not exists public.templates (
   id          uuid primary key,

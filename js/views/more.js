@@ -20,6 +20,7 @@ export function renderMore(view, ctx) {
       <a class="list-row" href="#/compte"><span class="list-main">Compte et synchronisation<small>${esc(account)}</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/reglages"><span class="list-main">Réglages<small>Repos, barre et disques, écran, thème</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/sauvegarde"><span class="list-main">Sauvegarde<small>Exporter ou importer tes données</small></span>${icon('chevron', 'row-chevron')}</a>
+      <a class="list-row" href="#/aide"><span class="list-main">Aide et tutoriels<small>Courtes vidéos pour prendre l'app en main</small></span>${icon('chevron', 'row-chevron')}</a>
     </div>
     <section class="block update-box">
       <p>Fonte ${esc(ctx.version)}</p>
@@ -74,12 +75,15 @@ export function renderExercises(view, ctx) {
       const c = await menuSheet(ex.name, [
         { label: 'Modifier', value: 'edit', icon: 'edit' },
         { label: 'Voir la progression', value: 'prog' },
+        { label: 'Voir la technique', value: 'video', icon: 'play' },
         { label: 'Supprimer', value: 'del', danger: true, icon: 'trash' },
       ]);
       if (c === 'edit') {
         if (await editExercise(ex)) draw();
       } else if (c === 'prog') {
         ctx.go(`/progres/${ex.id}`);
+      } else if (c === 'video') {
+        window.open(calc.techniqueUrl(ex), '_blank', 'noopener');
       } else if (c === 'del') {
         const used = calc.exerciseHistory(ex.id).length;
         const ok = await confirmSheet('Supprimer l’exercice', used
@@ -567,5 +571,36 @@ export function renderBackup(view, ctx) {
       toast(`Import impossible : ${err.message}`, { kind: 'error', duration: 6000 });
     }
     input.value = '';
+  });
+}
+
+// ---------- Aide et tutoriels ----------
+const TUTOS = [
+  ['1-programme-tout-fait', 'Ajouter un programme tout fait', 'Choisir un programme du catalogue et le retrouver dans tes séances.'],
+  ['2-faire-une-seance', 'Faire une séance', 'Charges pré-remplies, choix de la barre, repos, records et bilan.'],
+  ['3-minuteur-hiit', 'Le minuteur HIIT', 'Efforts et récups enchaînés, avec les séries cochées pour toi.'],
+  ['4-progression', 'Suivre sa progression', 'Records, courbes par exercice et poids de corps.'],
+];
+
+export function renderHelp(view, ctx) {
+  view.innerHTML = `
+    ${ctx.pageHead('Aide et tutoriels', { back: '/plus' })}
+    <p class="block-sub">Des vidéos de moins d'une minute, sans son. Il faut une connexion pour les regarder la première fois.</p>
+    <div class="list">${TUTOS.map(([id, title, desc]) => `
+      <button class="list-row" data-tuto="${id}"><span class="tuto-thumb">${icon('play')}</span>
+        <span class="list-main">${esc(title)}<small>${esc(desc)}</small></span>${icon('chevron', 'row-chevron')}</button>`).join('')}
+    </div>
+    <section class="block soft">
+      <p>Pour voir comment faire un exercice, touche <strong>Voir la technique</strong> sous son nom pendant une séance. Tu peux aussi enregistrer ta propre vidéo de référence dans la fiche de l'exercice (<strong>Plus > Exercices</strong>).</p>
+    </section>`;
+  view.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-tuto]');
+    if (!b) return;
+    const [id, title] = TUTOS.find((t) => t[0] === b.dataset.tuto);
+    openSheet({
+      title,
+      body: `<video class="tuto-video" src="docs/tutos/${id}.mp4" autoplay muted loop playsinline controls preload="auto"
+        aria-label="Tutoriel : ${esc(title)}"></video>`,
+    });
   });
 }

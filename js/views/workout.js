@@ -232,6 +232,7 @@ function editor(view, ctx, original, { live }) {
                <button class="base-chip" data-base aria-hidden="true" tabindex="-1">${esc(calc.baseLabel(base))}${icon('down')}</button>`
             : `<h2 class="ex-name">${esc(name)}</h2>${item.circuit ? '<span class="tag">Circuit</span>' : ''}`}
           <p class="ex-meta">${esc(targetText(item, mode))}</p>
+          <a class="tech-link" href="${esc(calc.techniqueUrl(ex, name))}" target="_blank" rel="noopener noreferrer">${icon('play')}<span>Voir la technique</span></a>
         </div>
         <button class="icon-btn" data-item-menu aria-label="Options de l'exercice ${esc(name)}">${icon('more')}</button>
       </header>

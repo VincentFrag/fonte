@@ -1,7 +1,7 @@
 // Service worker : met l'app en cache pour qu'elle s'ouvre sans réseau.
 // À CHAQUE MODIFICATION DES FICHIERS, augmente ce numéro de version
 // pour que les appareils récupèrent la nouvelle version.
-const VERSION = 'fonte-v1.4.0';
+const VERSION = 'fonte-v1.5.0';
 
 const ASSETS = [
   './',
@@ -53,6 +53,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // Supabase et autres : réseau direct
   if (url.pathname.endsWith('/sw.js')) return; // vérification de version : toujours le réseau
+  if (url.pathname.includes('/docs/')) return; // tutoriels vidéo : lecture directe (Safari lit les vidéos par morceaux)
 
   // config.js : réseau d'abord, en contournant le cache HTTP du navigateur,
   // pour prendre en compte une modification tout de suite
