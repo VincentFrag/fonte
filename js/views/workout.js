@@ -3,7 +3,7 @@ import * as store from '../store.js';
 import * as calc from '../calc.js';
 import * as sync from '../sync.js';
 import { esc, icon, openSheet, confirmSheet, menuSheet, toast, debounce, formData } from '../ui.js';
-import { pickExercise, platesHtml, workoutRowHtml, videoSheet } from './common.js';
+import { pickExercise, platesHtml, workoutRowHtml, videoSheet, mountPicker, resolvePick } from './common.js';
 import { runIntervals } from '../timer.js';
 import { t, tp, lang, numInput, dn } from '../i18n.js';
 
@@ -13,14 +13,26 @@ export function activeWorkout() {
     .sort((a, b) => Date.parse(b.started_at) - Date.parse(a.started_at))[0] || null;
 }
 
+// Séance mise de côté (bouton Retour) : on revient à l'accueil sans la perdre.
+const PARK_KEY = 'fonte-parked';
+function parkedId() {
+  try { return localStorage.getItem(PARK_KEY); } catch { return null; }
+}
+function setParked(id) {
+  try {
+    if (id) localStorage.setItem(PARK_KEY, id);
+    else localStorage.removeItem(PARK_KEY);
+  } catch {}
+}
+
 export function renderSeance(view, ctx) {
   const w = activeWorkout();
-  if (w) {
+  if (w && parkedId() !== w.id) {
     ctx.wake.enable();
     return editor(view, ctx, w, { live: true });
   }
   ctx.wake.disable();
-  renderStart(view, ctx);
+  renderStart(view, ctx, w);
 }
 
 export function renderWorkoutEdit(view, ctx, id) {
@@ -32,7 +44,8 @@ export function renderWorkoutEdit(view, ctx, id) {
   editor(view, ctx, w, { live: !w.ended_at });
 }
 
-export function startWorkout(ctx, templateId) {
+// Démarre une séance : à partir d'un programme, d'une liste d'exercices, ou vide.
+export function startWorkout(ctx, templateId, exerciseIds = []) {
   const tpl = templateId ? store.get('templates', templateId) : null;
   const items = tpl
     ? (tpl.items || [])
@@ -41,7 +54,8 @@ export function startWorkout(ctx, templateId) {
         return ex ? calc.buildItem(ex, ti, store.uuid) : null;
       })
       .filter(Boolean)
-    : [];
+    : exerciseIds.map((id) => store.get('exercises', id)).filter(Boolean).map((ex) => calc.buildItem(ex, null, store.uuid));
+  setParked(null);
   store.save('workouts', {
     id: store.uuid(),
     template_id: tpl?.id || null,
@@ -54,14 +68,45 @@ export function startWorkout(ctx, templateId) {
   ctx.go('/seance');
 }
 
+// Démarrage demandé alors qu'une séance est peut-être déjà en cours.
+export async function requestStart(ctx, { templateId = null, exerciseIds = [] } = {}) {
+  const cur = activeWorkout();
+  if (cur) {
+    const done = cur.items.reduce((n, it) => n + it.sets.filter((x) => x.done).length, 0);
+    const c = await openSheet({
+      title: t('Une séance est en cours'),
+      body: `<p class="sheet-text first">${esc(t('« {name} », commencée {when}.', { name: dn(cur.name) || t('Séance'), when: calc.relDays(cur.started_at) }))} ${esc(tp(done, '{n} série faite.', '{n} séries faites.'))}</p>
+        <p class="sheet-text">${t('Tu peux la reprendre, ou l’annuler pour démarrer la nouvelle. Une séance annulée n’est pas enregistrée.')}</p>`,
+      actions: [
+        { label: t('L’annuler'), kind: 'danger', value: 'replace' },
+        { label: t('La reprendre'), kind: 'primary', value: 'resume' },
+      ],
+    });
+    if (c === 'resume') {
+      setParked(null);
+      ctx.go('/seance');
+      return;
+    }
+    if (c !== 'replace') return;
+    store.remove('workouts', cur.id);
+    ctx.rest.stop();
+  }
+  startWorkout(ctx, templateId, exerciseIds);
+}
+
 // ---------- Choix de la séance ----------
-function renderStart(view, ctx) {
+const TAB_KEY = 'fonte-start-tab';
+
+function renderStart(view, ctx, paused) {
   const templates = store.all('templates')
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || dn(a.name).localeCompare(dn(b.name), lang()));
-  const exercises = store.all('exercises');
   const done = calc.finishedWorkouts();
   const week = calc.weekSummary();
   const last = done[done.length - 1];
+  let tab = (() => {
+    try { return sessionStorage.getItem(TAB_KEY); } catch { return null; }
+  })() || (templates.length ? 'prog' : 'ex');
+  let chosen = [];
 
   const lastFor = (tid) => {
     for (let i = done.length - 1; i >= 0; i--) if (done[i].template_id === tid) return done[i];
@@ -72,29 +117,32 @@ function renderStart(view, ctx) {
     ? `<a class="banner" href="#/compte">${t('Connecte-toi pour synchroniser ton téléphone, ta tablette et ton ordinateur.')}</a>`
     : '';
 
-  view.innerHTML = `
-    ${ctx.pageHead(t('Séance'))}
-    ${banner}
-    <section class="block">
-      <h2 class="block-title">${t('Démarrer une séance')}</h2>
-      <div class="tpl-grid">
-        ${templates.map((tpl) => {
-          const names = (tpl.items || []).map((it) => dn(store.getAny('exercises', it.exercise_id)?.name)).filter(Boolean);
-          const lw = lastFor(tpl.id);
-          return `<button class="tpl" data-start="${tpl.id}">
+  const resume = () => {
+    if (!paused) return '';
+    const n = paused.items.reduce((k, it) => k + it.sets.filter((x) => x.done).length, 0);
+    return `<section class="resume-card">
+      <div class="resume-text"><span class="resume-label">${t('Séance en cours')}</span>
+        <span class="resume-name">${esc(dn(paused.name) || t('Séance'))}</span>
+        <span class="resume-meta">${esc(t('Depuis {time}', { time: calc.fmtTime(paused.started_at) }))}, ${esc(tp(n, '{n} série faite', '{n} séries faites'))}</span></div>
+      <button class="btn primary" data-resume>${t('Reprendre')}</button>
+    </section>`;
+  };
+
+  const progTab = () => `
+    ${templates.length ? `<div class="tpl-grid">
+      ${templates.map((tpl) => {
+        const names = (tpl.items || []).map((it) => dn(store.getAny('exercises', it.exercise_id)?.name)).filter(Boolean);
+        const lw = lastFor(tpl.id);
+        return `<div class="tpl-card">
+          <button class="tpl" data-start="${tpl.id}">
             <span class="tpl-name">${esc(dn(tpl.name))}</span>
             <span class="tpl-list">${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? `, +${names.length - 4}` : ''}</span>
             <span class="tpl-last">${lw ? esc(t('Dernière fois {when}', { when: calc.relDays(lw.started_at) })) : t('Jamais faite')}</span>
-          </button>`;
-        }).join('')}
-        <button class="tpl tpl-free" data-start="free">
-          <span class="tpl-name">${t('Séance libre')}</span>
-          <span class="tpl-list">${t('Tu ajoutes les exercices au fil de la séance.')}</span>
-        </button>
-      </div>
-      ${!exercises.length ? `<p class="hint-text">${t('Ta liste d’exercices est vide.')} <a href="#/exercices">${t('Ajouter des exercices')}</a></p>` : ''}
-      ${exercises.length && !templates.length ? `<p class="hint-text">${t('Un programme prépare tes séances : exercices, nombre de séries, fourchette de répétitions et repos.')} <a href="#/programmes">${t('Créer un programme')}</a></p>` : ''}
-    </section>
+          </button>
+          <button class="icon-btn tpl-more" data-tpl-menu="${tpl.id}" aria-label="${esc(t('Options de {name}', { name: dn(tpl.name) }))}">${icon('more')}</button>
+        </div>`;
+      }).join('')}
+    </div>` : `<p class="hint-text">${t('Un programme prépare tes séances : exercices, nombre de séries, fourchette de répétitions et repos.')} <a href="#/programmes">${t('Créer un programme')}</a></p>`}
     <section class="block">
       <h2 class="block-title">${t('Cette semaine')}</h2>
       <div class="figures">
@@ -105,11 +153,98 @@ function renderStart(view, ctx) {
     </section>
     ${last ? `<section class="block"><h2 class="block-title">${t('Dernière séance')}</h2><div class="hist-list">${workoutRowHtml(last)}</div></section>` : ''}`;
 
-  view.addEventListener('click', (e) => {
+  const exTab = () => `
+    <p class="block-sub">${t('Touche un ou plusieurs exercices, puis démarre. Ils s’ajoutent dans l’ordre choisi.')}</p>
+    <div data-picker></div>
+    <button class="btn ghost block" data-start="free">${t('Démarrer une séance vide')}</button>
+    <div class="pick-bar" data-pickbar hidden>
+      <button class="btn" data-clear>${t('Effacer')}</button>
+      <button class="btn primary" data-go></button>
+    </div>`;
+
+  const drawBar = () => {
+    const bar = view.querySelector('[data-pickbar]');
+    if (!bar) return;
+    bar.hidden = !chosen.length;
+    bar.querySelector('[data-go]').textContent = tp(chosen.length, 'Démarrer avec {n} exercice', 'Démarrer avec {n} exercices');
+  };
+
+  const draw = () => {
+    view.innerHTML = `
+      ${ctx.pageHead(t('Séance'))}
+      ${banner}
+      ${resume()}
+      <section class="block start-block">
+        <h2 class="block-title">${t('Démarrer une séance')}</h2>
+        <div class="tabs" role="tablist" aria-label="${esc(t('Démarrer une séance'))}">
+          <button role="tab" class="tab" data-tab="prog" aria-selected="${tab === 'prog'}">${t('Programmes')}</button>
+          <button role="tab" class="tab" data-tab="ex" aria-selected="${tab === 'ex'}">${t('Exercices')}</button>
+        </div>
+        <div class="tab-panel" role="tabpanel">${tab === 'prog' ? progTab() : exTab()}</div>
+      </section>`;
+    if (tab === 'ex') {
+      chosen = [];
+      mountPicker(view.querySelector('[data-picker]'), {
+        multi: true,
+        onChange: (keys) => {
+          chosen = keys;
+          drawBar();
+        },
+      });
+      drawBar();
+    }
+  };
+
+  view.addEventListener('click', async (e) => {
+    const tb = e.target.closest('[data-tab]');
+    if (tb) {
+      if (tb.dataset.tab === tab) return;
+      tab = tb.dataset.tab;
+      try { sessionStorage.setItem(TAB_KEY, tab); } catch {}
+      draw();
+      return;
+    }
+    if (e.target.closest('[data-resume]')) {
+      setParked(null);
+      ctx.go('/seance');
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (e.target.closest('[data-clear]')) {
+      draw();
+      return;
+    }
+    if (e.target.closest('[data-go]')) {
+      const ids = chosen.map(resolvePick).filter(Boolean);
+      if (ids.length) requestStart(ctx, { exerciseIds: ids });
+      return;
+    }
+    const m = e.target.closest('[data-tpl-menu]');
+    if (m) {
+      const tpl = store.get('templates', m.dataset.tplMenu);
+      if (!tpl) return;
+      const c = await menuSheet(dn(tpl.name), [
+        { label: t('Démarrer'), value: 'start', icon: 'play' },
+        { label: t('Modifier'), value: 'edit', icon: 'edit' },
+        { label: t('Retirer'), value: 'del', danger: true, icon: 'trash' },
+      ]);
+      if (c === 'start') requestStart(ctx, { templateId: tpl.id });
+      else if (c === 'edit') ctx.go(`/programmes/${tpl.id}`);
+      else if (c === 'del') {
+        const ok = await confirmSheet(t('Retirer « {name} »', { name: dn(tpl.name) }), t('Cette séance type sera supprimée de tes programmes. Tes exercices et tes séances passées sont conservés.'), { ok: t('Retirer'), danger: true });
+        if (!ok) return;
+        store.remove('templates', tpl.id);
+        toast(t('« {name} » retiré.', { name: dn(tpl.name) }));
+        ctx.render();
+      }
+      return;
+    }
     const b = e.target.closest('[data-start]');
     if (!b) return;
-    startWorkout(ctx, b.dataset.start === 'free' ? null : b.dataset.start);
+    requestStart(ctx, { templateId: b.dataset.start === 'free' ? null : b.dataset.start });
   });
+
+  draw();
 }
 
 // ---------- Saisie de la séance ----------
@@ -262,7 +397,7 @@ function editor(view, ctx, original, { live }) {
     if (st.time) summary.push(t('{v} d’effort', { v: calc.fmtSec(st.time) }));
     view.innerHTML = `
       ${ctx.pageHead(dn(w.name) || t('Séance'), {
-        back: live ? null : `/historique/${w.id}`,
+        back: live ? { attr: 'data-leave' } : `/historique/${w.id}`,
         sub: sub(),
         actions: `<button class="icon-btn" data-wmenu aria-label="${esc(t('Options de la séance'))}">${icon('more')}</button>
           ${live ? `<button class="btn primary small" data-finish>${t('Terminer')}</button>` : `<a class="btn small" href="#/historique/${w.id}">${t('Fermer')}</a>`}`,
@@ -270,9 +405,13 @@ function editor(view, ctx, original, { live }) {
       ${w.items.length ? w.items.map(itemHtml).join('') : `<p class="empty">${t('Ajoute un premier exercice pour commencer.')}</p>`}
       <button class="btn ghost block add-ex" data-add-ex>${icon('add')}<span>${t('Ajouter un exercice')}</span></button>
       ${w.notes ? `<p class="w-notes">${esc(w.notes)}</p>` : ''}
-      ${live && w.items.length ? `<div class="finish-zone">
-          <p>${esc(summary.join(', '))}</p>
-          <button class="btn primary block" data-finish>${t('Terminer la séance')}</button>
+      ${live ? `<div class="finish-zone">
+          ${w.items.length ? `<p>${esc(summary.join(', '))}</p>
+          <button class="btn primary block" data-finish>${t('Terminer la séance')}</button>` : ''}
+          <div class="leave-row">
+            <button class="btn" data-leave>${icon('back')}<span>${t('Reprendre plus tard')}</span></button>
+            <button class="btn danger-ghost" data-cancel>${icon('trash')}<span>${t('Annuler la séance')}</span></button>
+          </div>
         </div>` : ''}`;
   }
 
@@ -463,7 +602,7 @@ function editor(view, ctx, original, { live }) {
         { label: t('Renommer'), value: 'rename', icon: 'edit' },
         { label: w.notes ? t('Modifier la note') : t('Ajouter une note'), value: 'notes' },
         { label: t('Date et durée'), value: 'date' },
-        { label: live ? t('Abandonner la séance') : t('Supprimer la séance'), value: 'delete', danger: true, icon: 'trash' },
+        { label: live ? t('Annuler la séance') : t('Supprimer la séance'), value: 'delete', danger: true, icon: 'trash' },
       ]);
       if (c === 'rename' || c === 'notes') {
         const field = c === 'rename' ? 'name' : 'notes';
@@ -479,7 +618,7 @@ function editor(view, ctx, original, { live }) {
           rerender();
         }
       } else if (c === 'delete') {
-        const ok = await confirmSheet(live ? t('Abandonner la séance') : t('Supprimer la séance'), t('La séance et toutes ses séries seront supprimées.'), { ok: live ? t('Abandonner') : t('Supprimer'), danger: true });
+        const ok = await confirmSheet(live ? t('Annuler la séance') : t('Supprimer la séance'), live ? t('Rien ne sera enregistré : la séance et toutes ses séries seront supprimées.') : t('La séance et toutes ses séries seront supprimées.'), { ok: live ? t('Annuler la séance') : t('Supprimer'), cancel: live ? t('Continuer') : undefined, danger: true });
         if (!ok) return;
         store.remove('workouts', w.id);
         if (live) {
@@ -488,6 +627,32 @@ function editor(view, ctx, original, { live }) {
         }
         ctx.go(live ? '/seance' : '/historique');
       }
+      return;
+    }
+
+    if (el.closest('[data-leave]')) {
+      save();
+      setParked(w.id);
+      ctx.wake.disable();
+      toast(t('Séance gardée pour plus tard. Reprends-la depuis l’onglet Séance.'));
+      ctx.go('/seance');
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    if (el.closest('[data-cancel]')) {
+      const done = w.items.reduce((n, it) => n + it.sets.filter((x) => x.done).length, 0);
+      const ok = await confirmSheet(t('Annuler la séance'), done
+        ? tp(done, 'Rien ne sera enregistré : la séance et sa série faite seront supprimées.', 'Rien ne sera enregistré : la séance et ses {n} séries faites seront supprimées.')
+        : t('Rien ne sera enregistré.'), { ok: t('Annuler la séance'), cancel: t('Continuer'), danger: true });
+      if (!ok) return;
+      store.remove('workouts', w.id);
+      setParked(null);
+      ctx.rest.stop();
+      ctx.wake.disable();
+      toast(t('Séance annulée.'));
+      ctx.go('/seance');
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -502,7 +667,7 @@ function editor(view, ctx, original, { live }) {
     save();
     const doneSets = w.items.reduce((n, it) => n + it.sets.filter((x) => x.done).length, 0);
     if (!doneSets) {
-      const del = await confirmSheet(t('Aucune série cochée'), t('Coche les séries réalisées avant de terminer. Tu peux aussi abandonner cette séance vide.'), { ok: t('Abandonner la séance'), danger: true });
+      const del = await confirmSheet(t('Aucune série cochée'), t('Coche les séries réalisées avant de terminer. Tu peux aussi annuler cette séance vide.'), { ok: t('Annuler la séance'), cancel: t('Continuer'), danger: true });
       if (del) {
         store.remove('workouts', w.id);
         ctx.rest.stop();
@@ -566,6 +731,7 @@ function baseSheet(name, current) {
   return openSheet({
     title: name,
     body: `<p class="sheet-text first">${t('Charge de départ pour cet exercice')}</p>
+      <p class="base-help">${t('Avec une barre, saisis toujours la charge totale, barre comprise : l’app ne l’ajoute pas. Exemple : barre de 20 kg et un disque de 10 kg de chaque côté, saisis 40.')}</p>
       <div class="menu-list">${options.map((o, i) => `<button class="menu-item ${same(o.value, current) ? 'is-on' : ''}" data-opt="${i}">
         <span class="mi-main">${esc(o.label)}</span><span class="mi-detail">${esc(o.detail)}</span>${same(o.value, current) ? icon('check') : ''}</button>`).join('')}</div>
       <form class="custom-bar" data-custom>

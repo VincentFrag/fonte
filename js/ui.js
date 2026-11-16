@@ -42,13 +42,31 @@ export function icon(name, cls = '') {
 // ---------- Feuille modale ----------
 let sheetStack = [];
 
-export function openSheet({ title, body, actions = [], onMount, wide = false }) {
+// Clavier ouvert sur iPhone : la feuille suit la partie visible de l'écran
+// (sinon le haut de la feuille, avec le champ de recherche, sort de l'écran).
+function fitViewport() {
+  const vv = window.visualViewport;
+  const root = document.documentElement.style;
+  if (!vv || !sheetStack.length) {
+    root.removeProperty('--vv-h');
+    root.removeProperty('--vv-top');
+    return;
+  }
+  root.setProperty('--vv-h', `${Math.round(vv.height)}px`);
+  root.setProperty('--vv-top', `${Math.round(vv.offsetTop)}px`);
+}
+if (typeof window !== 'undefined' && window.visualViewport) {
+  window.visualViewport.addEventListener('resize', fitViewport);
+  window.visualViewport.addEventListener('scroll', fitViewport);
+}
+
+export function openSheet({ title, body, actions = [], onMount, wide = false, tall = false }) {
   return new Promise((resolve) => {
     const wrap = document.createElement('div');
     wrap.className = 'sheet-wrap';
     wrap.innerHTML = `
       <div class="sheet-backdrop" data-close></div>
-      <div class="sheet ${wide ? 'sheet-wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet ${wide ? 'sheet-wide' : ''} ${tall ? 'sheet-tall' : ''}" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
         <header class="sheet-head">
           <h2 id="sheet-title">${esc(title)}</h2>
           <button class="icon-btn" data-close aria-label="${esc(t('Fermer'))}">${icon('close')}</button>
@@ -64,6 +82,7 @@ export function openSheet({ title, body, actions = [], onMount, wide = false }) 
       wrap.classList.add('closing');
       setTimeout(() => wrap.remove(), 160);
       sheetStack = sheetStack.filter((s) => s !== api);
+      fitViewport();
       document.removeEventListener('keydown', onKey);
       if (prevFocus && prevFocus.focus) prevFocus.focus({ preventScroll: true });
       resolve(value);
@@ -88,20 +107,26 @@ export function openSheet({ title, body, actions = [], onMount, wide = false }) 
       close(a.value ?? true);
     });
     if (onMount) onMount(wrap, api);
+    fitViewport();
+    // Le champ autofocus reçoit le focus tout de suite, pendant le toucher qui ouvre la feuille :
+    // c'est la condition pour que l'iPhone ouvre le clavier.
+    const auto = wrap.querySelector('[autofocus]');
+    if (auto) auto.focus({ preventScroll: true });
     requestAnimationFrame(() => {
       wrap.classList.add('open');
-      const first = wrap.querySelector('[autofocus]') || wrap.querySelector('.sheet-head button');
-      if (first) first.focus({ preventScroll: true });
+      if (auto) {
+        if (document.activeElement !== auto) auto.focus({ preventScroll: true });
+      } else wrap.querySelector('.sheet-head button')?.focus({ preventScroll: true });
     });
   });
 }
 
-export function confirmSheet(title, message, { ok = t('Confirmer'), danger = false } = {}) {
+export function confirmSheet(title, message, { ok = t('Confirmer'), cancel = t('Annuler'), danger = false } = {}) {
   return openSheet({
     title,
     body: `<p class="sheet-text">${esc(message)}</p>`,
     actions: [
-      { label: t('Annuler'), value: false },
+      { label: cancel || t('Annuler'), value: false },
       { label: ok, kind: danger ? 'danger' : 'primary', value: true },
     ],
   }).then(Boolean);

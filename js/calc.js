@@ -145,19 +145,25 @@ export const EQUIPMENT = {
 };
 export const equipLabel = (k) => (EQUIPMENT[k] ? t(EQUIPMENT[k]) : '');
 
+// Catalogue des exercices, source unique pour les programmes tout faits et le choix d'un exercice.
 // [nom français, groupe, type, nom anglais]
-export const BASE_EXERCISES = [
+export const CATALOG = [
   ['Développé couché', 'Pectoraux', 'barre', 'Bench press'],
   ['Développé incliné haltères', 'Pectoraux', 'halteres', 'Incline dumbbell press'],
   ['Écarté à la poulie', 'Pectoraux', 'poulie', 'Cable fly'],
   ['Dips', 'Pectoraux', 'pdc', 'Dips'],
+  ['Pompes', 'Pectoraux', 'pdc', 'Push-ups'],
   ['Tractions', 'Dos', 'pdc', 'Pull-ups'],
   ['Rowing barre', 'Dos', 'barre', 'Barbell row'],
+  ['Rowing haltère', 'Dos', 'halteres', 'One-arm dumbbell row'],
+  ['Rowing inversé', 'Dos', 'pdc', 'Inverted row'],
   ['Tirage vertical', 'Dos', 'poulie', 'Lat pulldown'],
   ['Tirage horizontal', 'Dos', 'poulie', 'Seated cable row'],
   ['Soulevé de terre', 'Dos', 'barre', 'Deadlift'],
   ['Développé militaire', 'Épaules', 'barre', 'Overhead press'],
+  ['Développé militaire haltères', 'Épaules', 'halteres', 'Dumbbell shoulder press'],
   ['Élévations latérales', 'Épaules', 'halteres', 'Lateral raise'],
+  ['Oiseau haltères', 'Épaules', 'halteres', 'Rear delt fly'],
   ['Face pull', 'Épaules', 'poulie', 'Face pull'],
   ['Curl barre', 'Biceps', 'barre', 'Barbell curl'],
   ['Curl marteau', 'Biceps', 'halteres', 'Hammer curl'],
@@ -165,13 +171,32 @@ export const BASE_EXERCISES = [
   ['Barre au front', 'Triceps', 'barre', 'Skull crusher'],
   ['Squat', 'Quadriceps', 'barre', 'Squat'],
   ['Presse à cuisses', 'Quadriceps', 'machine', 'Leg press'],
+  ['Leg extension', 'Quadriceps', 'machine', 'Leg extension'],
   ['Fentes haltères', 'Quadriceps', 'halteres', 'Dumbbell lunge'],
+  ['Squat bulgare', 'Quadriceps', 'pdc', 'Bulgarian split squat'],
+  ['Fentes au poids du corps', 'Quadriceps', 'pdc', 'Bodyweight lunge'],
+  ['Squats sautés', 'Quadriceps', 'duree', 'Jump squats'],
+  ['Fentes sautées', 'Quadriceps', 'duree', 'Jump lunges'],
   ['Soulevé de terre jambes tendues', 'Ischios', 'barre', 'Romanian deadlift'],
   ['Leg curl', 'Ischios', 'machine', 'Leg curl'],
   ['Hip thrust', 'Fessiers', 'barre', 'Hip thrust'],
+  ['Pont fessier', 'Fessiers', 'pdc', 'Glute bridge'],
   ['Mollets debout', 'Mollets', 'machine', 'Standing calf raise'],
   ['Crunch à la poulie', 'Abdos', 'poulie', 'Cable crunch'],
+  ['Relevés de jambes', 'Abdos', 'pdc', 'Leg raises'],
+  ['Planche', 'Abdos', 'duree', 'Plank'],
+  ['Planche latérale', 'Abdos', 'duree', 'Side plank'],
+  ['Hollow hold', 'Abdos', 'duree', 'Hollow hold'],
+  ['Burpees', 'Corps entier', 'duree', 'Burpees'],
+  ['Mountain climbers', 'Corps entier', 'duree', 'Mountain climbers'],
+  ['Jumping jacks', 'Corps entier', 'duree', 'Jumping jacks'],
+  ['Montées de genoux', 'Corps entier', 'duree', 'High knees'],
+  ['Course à pied', 'Cardio', 'cardio', 'Running'],
+  ['Vélo', 'Cardio', 'cardio', 'Cycling'],
+  ['Rameur', 'Cardio', 'cardio', 'Rowing machine'],
+  ['Elliptique', 'Cardio', 'cardio', 'Elliptical'],
 ];
+export const BASE_EXERCISES = CATALOG;
 export const baseName = (row) => (lang() === 'en' ? row[3] : row[0]);
 registerNames(BASE_EXERCISES.map((r) => [r[0], r[3]]));
 

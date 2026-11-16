@@ -4,7 +4,7 @@ import * as calc from '../calc.js';
 import * as sync from '../sync.js';
 import { esc, icon, toast, confirmSheet, menuSheet, formData, openSheet } from '../ui.js';
 import { sortedExercises, exerciseListHtml, editExercise, pickExercise, addBaseExercises, videoSheet } from './common.js';
-import { startWorkout, activeWorkout } from './workout.js';
+import { requestStart } from './workout.js';
 import * as presets from '../presets.js';
 import { t, tp, lang, numInput, dn } from '../i18n.js';
 
@@ -18,6 +18,7 @@ export function renderMore(view, ctx) {
     <div class="list menu-big">
       <a class="list-row" href="#/exercices"><span class="list-main">${t('Exercices')}<small>${tp(nEx, '{n} exercice', '{n} exercices')}</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/programmes"><span class="list-main">${t('Programmes')}<small>${tp(nTpl, '{n} programme', '{n} programmes')}</small></span>${icon('chevron', 'row-chevron')}</a>
+      <a class="list-row" href="#/etirements"><span class="list-main">${t('Étirements')}<small>${t('Routine guidée, 30 secondes par étirement')}</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/compte"><span class="list-main">${t('Compte et synchronisation')}<small>${esc(account)}</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/reglages"><span class="list-main">${t('Réglages')}<small>${t('Langue, repos, barre et disques, écran, thème')}</small></span>${icon('chevron', 'row-chevron')}</a>
       <a class="list-row" href="#/sauvegarde"><span class="list-main">${t('Sauvegarde')}<small>${t('Exporter ou importer tes données')}</small></span>${icon('chevron', 'row-chevron')}</a>
@@ -40,7 +41,7 @@ export function renderMore(view, ctx) {
       }
       toast(r === 'uptodate' ? t('Fonte est à jour (version {v}).', { v: ctx.version }) : t('Mise à jour automatique indisponible sur ce navigateur.'));
     } catch {
-      toast('Pas de connexion au serveur. Réessaie avec du réseau.', { kind: 'error' });
+      toast(t('Pas de connexion au serveur. Réessaie avec du réseau.'), { kind: 'error' });
     }
     b.disabled = false;
     b.querySelector('span').textContent = t('Rechercher une mise à jour');
@@ -51,12 +52,14 @@ export function renderMore(view, ctx) {
 export function renderExercises(view, ctx) {
   const draw = () => {
     const list = sortedExercises();
+    const missing = presets.catalogMissing().length;
     view.innerHTML = `
       ${ctx.pageHead(t('Exercices'), { back: '/plus', actions: `<button class="btn primary small" data-new>${icon('add')}<span>${t('Nouveau')}</span></button>` })}
       ${list.length ? `<div class="pick-list">${exerciseListHtml(list, { attr: 'data-edit' })}</div>` : ''}
       <section class="block soft">
-        <p>${list.length ? t('Il te manque des classiques ?') : t('Ta liste est vide.')} ${t('Ajoute {n} exercices courants (développé couché, squat, tractions…). Ceux que tu as déjà ne seront pas dupliqués.', { n: calc.BASE_EXERCISES.length })}</p>
-        <button class="btn" data-base>${t('Ajouter les exercices courants')}</button>
+        <p>${missing ? `${list.length ? t('Il te manque des classiques ?') : t('Ta liste est vide.')} ${tp(missing, 'Le catalogue de Fonte compte {total} exercices (ceux des programmes tout faits) : {n} n’est pas encore dans ta liste. Ceux que tu as déjà ne seront pas dupliqués.', 'Le catalogue de Fonte compte {total} exercices (ceux des programmes tout faits) : {n} ne sont pas encore dans ta liste. Ceux que tu as déjà ne seront pas dupliqués.', { total: calc.CATALOG.length })}` : t('Tous les exercices du catalogue sont dans ta liste.')}</p>
+        ${missing ? `<button class="btn" data-base>${t('Ajouter les exercices du catalogue')}</button>` : ''}
+        <p class="fine">${t('Tu n’es pas obligé de les ajouter : quand tu choisis un exercice, tout le catalogue est proposé.')}</p>
       </section>`;
   };
   view.addEventListener('click', async (e) => {
@@ -66,7 +69,7 @@ export function renderExercises(view, ctx) {
     }
     if (e.target.closest('[data-base]')) {
       const n = addBaseExercises();
-      toast(n ? tp(n, '{n} exercice ajouté.', '{n} exercices ajoutés.') : t('Tous les exercices courants sont déjà là.'));
+      toast(n ? tp(n, '{n} exercice ajouté.', '{n} exercices ajoutés.') : t('Tous les exercices du catalogue sont dans ta liste.'));
       draw();
       return;
     }
@@ -283,12 +286,7 @@ export function renderTemplateEdit(view, ctx, id) {
     }
     if (e.target.closest('[data-start]')) {
       if (dirty) save();
-      if (activeWorkout()) {
-        toast(t('Une séance est déjà en cours. Termine-la ou abandonne-la avant.'));
-        ctx.go('/seance');
-        return;
-      }
-      startWorkout(ctx, tpl.id);
+      requestStart(ctx, { templateId: tpl.id });
       return;
     }
     if (e.target.closest('[data-menu]')) {
@@ -457,7 +455,8 @@ export function renderSettings(view, ctx) {
       <h2 class="block-title">${t('Séance')}</h2>
       <label class="field"><span>${t('Repos par défaut (secondes)')}</span><input name="rest" inputmode="numeric" value="${s.rest}"></label>
       <label class="switch"><input type="checkbox" name="showRir" ${s.showRir ? 'checked' : ''}><span>${t('Afficher la colonne RIR')}<small>${t('Répétitions en réserve : combien de reps tu aurais encore pu faire. 0 = échec.')}</small></span></label>
-      <label class="switch"><input type="checkbox" name="sound" ${s.sound ? 'checked' : ''}><span>${t('Son à la fin du repos')}<small>${t('Sur iPhone, le son ne joue que si l’app est au premier plan et le mode silencieux désactivé.')}</small></span></label>
+      <label class="switch"><input type="checkbox" name="sound" ${s.sound ? 'checked' : ''}><span>${t('Son à la fin du repos')}<small>${t('Sur iPhone, le son ne joue que si l’app est au premier plan et le mode silencieux désactivé. L’iPhone ne permet pas la vibration aux sites : l’écran clignote en vert à la place.')}</small></span></label>
+      <button type="button" class="btn small test-sound" data-test-sound>${icon('play')}<span>${t('Tester le son')}</span></button>
       <label class="switch"><input type="checkbox" name="wakeLock" ${s.wakeLock ? 'checked' : ''}><span>${t('Garder l’écran allumé pendant la séance')}</span></label>
       <h2 class="block-title">${t('Barre et disques')}</h2>
       <label class="field"><span>${t('Poids de barre par défaut (kg)')}</span><input name="bar" inputmode="decimal" value="${numInput(s.bar)}">
@@ -492,6 +491,14 @@ export function renderSettings(view, ctx) {
       return;
     }
     toast(t('Réglages enregistrés.'), { duration: 1500 });
+  });
+  view.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-test-sound]')) return;
+    if (!calc.settings().sound) {
+      toast(t('Active d’abord le son à la fin du repos.'));
+      return;
+    }
+    ctx.sound.test();
   });
 }
 

@@ -8,12 +8,13 @@ import { renderSeance, renderWorkoutEdit } from './views/workout.js';
 import { renderHistory, renderHistoryDetail } from './views/history.js';
 import { renderProgress, renderExerciseProgress } from './views/progress.js';
 import { renderBody } from './views/body.js';
+import { renderStretches } from './stretch.js';
 import {
   renderMore, renderExercises, renderTemplates, renderTemplateEdit,
   renderAccount, renderSettings, renderBackup, renderHelp,
 } from './views/more.js';
 
-const APP_VERSION = '1.6.2';
+const APP_VERSION = '1.7.0';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -31,6 +32,7 @@ const routes = [
   [/^\/reglages$/, renderSettings, 'plus'],
   [/^\/sauvegarde$/, renderBackup, 'plus'],
   [/^\/aide$/, renderHelp, 'plus'],
+  [/^\/etirements$/, renderStretches, 'plus'],
 ];
 
 const NAV = [
@@ -81,7 +83,8 @@ function syncPill() {
 
 function pageHead(title, { back = null, actions = '', sub = '' } = {}) {
   return `<header class="page-head">
-    ${back ? `<a class="icon-btn back" href="#${back}" aria-label="${esc(t('Retour'))}">${icon('back')}</a>` : ''}
+    ${back?.attr ? `<button class="icon-btn back" ${back.attr} aria-label="${esc(t('Retour'))}">${icon('back')}</button>`
+      : back ? `<a class="icon-btn back" href="#${back}" aria-label="${esc(t('Retour'))}">${icon('back')}</a>` : ''}
     <div class="page-title"><h1>${esc(title)}</h1>${sub ? `<p class="page-sub">${sub}</p>` : ''}</div>
     <div class="head-actions">${actions}${syncPill()}</div>
   </header>`;
@@ -155,32 +158,60 @@ function renderWhenIdle() {
 // ---------- Minuteur de repos ----------
 const REST_KEY = 'fonte-rest';
 let audioCtx = null;
+let primed = false;
 
+// Sur iPhone, le son n'est débloqué que par un vrai toucher (fin du toucher, clic),
+// pas par le début du toucher : on débloque à chaque interaction, et on joue un son muet
+// la première fois, ce qui active la sortie audio de la page.
 function unlockAudio() {
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+    if (!primed) {
+      const src = audioCtx.createBufferSource();
+      src.buffer = audioCtx.createBuffer(1, 1, 22050);
+      src.connect(audioCtx.destination);
+      src.start(0);
+      primed = true;
+    }
   } catch {}
+}
+
+function schedule(list) {
+  const t0 = audioCtx.currentTime + 0.02;
+  for (const [d, f, len] of list) {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine';
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + d);
+    g.gain.exponentialRampToValueAtTime(0.5, t0 + d + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + len);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t0 + d);
+    o.stop(t0 + d + len + 0.02);
+  }
 }
 
 // Joue une suite de bips : [[délai, fréquence, durée], …]
 function tones(list) {
   if (!calc.settings().sound || !audioCtx) return;
   try {
-    const t0 = audioCtx.currentTime;
-    for (const [d, f, len] of list) {
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = 'sine';
-      o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, t0 + d);
-      g.gain.exponentialRampToValueAtTime(0.35, t0 + d + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + len);
-      o.connect(g).connect(audioCtx.destination);
-      o.start(t0 + d);
-      o.stop(t0 + d + len + 0.02);
+    // Le son a pu être suspendu (écran verrouillé, appel, autre app) : on le relance avant de jouer
+    if (audioCtx.state !== 'running') {
+      audioCtx.resume().then(() => schedule(list)).catch(() => {});
+      return;
     }
+    schedule(list);
   } catch {}
+}
+
+// Signal visuel en plus du son (et de la vibration, que l'iPhone ne permet pas aux sites)
+function flash() {
+  document.body.classList.remove('rest-flash');
+  void document.body.offsetWidth;
+  document.body.classList.add('rest-flash');
+  setTimeout(() => document.body.classList.remove('rest-flash'), 1600);
 }
 
 function beep() {
@@ -192,6 +223,12 @@ ctx.sound = {
   go: () => tones([[0, 1175, 0.35]]),
   rest: () => tones([[0, 880, 0.15], [0.18, 660, 0.25]]),
   done: () => tones([[0, 880, 0.15], [0.18, 1175, 0.15], [0.36, 1568, 0.35]]),
+  test: () => {
+    unlockAudio();
+    beep();
+    flash();
+    if (navigator.vibrate) navigator.vibrate([300, 120, 300]);
+  },
 };
 
 const rest = {
@@ -244,7 +281,8 @@ const rest = {
       if (!bar.classList.contains('is-over')) {
         bar.classList.add('is-over');
         beep();
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        flash();
+        if (navigator.vibrate) navigator.vibrate([300, 120, 300, 120, 300]);
         $('.rest-time', bar).textContent = t('Repos terminé');
         setTimeout(() => {
           if (this.state && this.state.endsAt <= Date.now()) this.stop();
@@ -518,7 +556,7 @@ async function start() {
     return;
   }
   window.addEventListener('hashchange', render);
-  window.addEventListener('pointerdown', unlockAudio, { passive: true });
+  for (const ev of ['pointerup', 'touchend', 'click', 'keydown']) window.addEventListener(ev, unlockAudio, { capture: true, passive: true });
   store.onChange((d) => {
     if (d.silent) return;
     if (d.remote || d.wipe) renderWhenIdle();
@@ -527,6 +565,7 @@ async function start() {
   store.onChange(() => updateSyncPills());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
+      if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
       rest.draw();
       if (wake.want) wake.enable();
     }

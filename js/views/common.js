@@ -3,6 +3,7 @@ import * as store from '../store.js';
 import * as calc from '../calc.js';
 import { esc, icon, openSheet, formData, toast } from '../ui.js';
 import { t, tp, lang, numInput, dn, nameVariants } from '../i18n.js';
+import * as presets from '../presets.js';
 
 export function sortedExercises() {
   return store.all('exercises').sort((a, b) => dn(a.name).localeCompare(dn(b.name), lang()));
@@ -26,33 +27,109 @@ export function exerciseListHtml(list, { attr = 'data-pick' } = {}) {
     .join('');
 }
 
+// ---------- Choix d'exercices ----------
+// Propose tes exercices et tout le catalogue : un exercice du catalogue que tu n'as pas
+// encore est créé au moment où tu le choisis.
+const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+export function pickerEntries() {
+  const own = store.all('exercises').map((ex) => ({
+    key: ex.id, name: dn(ex.name), muscle: ex.muscle, equipment: ex.equipment,
+    bar: ex.equipment === 'barre' ? ex.bar_weight : null, search: norm(`${ex.name} ${dn(ex.name)}`),
+  }));
+  const cat = presets.catalogMissing().map((fr) => {
+    const row = calc.CATALOG.find((r) => r[0] === fr);
+    return { key: `cat:${fr}`, name: presets.exLabel(fr), muscle: row[1], equipment: row[2], bar: null, search: norm(`${fr} ${row[3]}`) };
+  });
+  return [...own, ...cat].sort((a, b) => a.name.localeCompare(b.name, lang()));
+}
+
+// Clé choisie → id d'exercice (crée l'exercice du catalogue si besoin)
+export function resolvePick(key) {
+  if (String(key).startsWith('cat:')) return presets.ensureExercise(key.slice(4)).id;
+  return store.get('exercises', key) ? key : null;
+}
+
+function entriesHtml(list, selected) {
+  const groups = new Map();
+  for (const m of calc.MUSCLES) groups.set(m, []);
+  for (const e of list) groups.get(calc.MUSCLES.includes(e.muscle) ? e.muscle : 'Autre').push(e);
+  return [...groups.entries()].filter(([, l]) => l.length).map(([m, l]) => `<div class="ex-group"><h3 class="group-title">${esc(calc.muscleLabel(m))}</h3>${l.map((e) => {
+    const n = selected ? selected.indexOf(e.key) + 1 : 0;
+    return `<button class="list-row ${selected ? 'pick-row' : ''}" data-pick="${esc(e.key)}" ${selected ? `aria-pressed="${n ? 'true' : 'false'}"` : ''}>
+      ${selected ? `<span class="pick-box" aria-hidden="true">${n || ''}</span>` : ''}
+      <span class="list-main">${esc(e.name)}</span><span class="list-meta">${esc(calc.equipLabel(e.equipment))}${e.bar != null ? ` ${esc(calc.fmt(e.bar))} kg` : ''}</span></button>`;
+  }).join('')}</div>`).join('');
+}
+
+// Liste avec recherche. multi : sélection de plusieurs exercices, dans l'ordre des touches.
+// onPick(key) en choix simple, onChange(keys) en choix multiple, onCreate(term) pour « Créer ».
+export function mountPicker(root, { multi = false, selected = [], onPick, onChange, onCreate } = {}) {
+  const sel = [...selected];
+  root.innerHTML = `<label class="search"><span class="sr-only">${t('Rechercher')}</span>
+      <input type="search" placeholder="${esc(t('Rechercher un exercice'))}" autocomplete="off" enterkeyhint="search" data-q ${multi ? '' : 'autofocus'}></label>
+    <div class="pick-list" data-list></div>`;
+  const list = root.querySelector('[data-list]');
+  const q = root.querySelector('[data-q]');
+  let entries = pickerEntries();
+  const draw = () => {
+    const term = norm(q.value.trim());
+    const found = entries.filter((e) => !term || e.search.includes(term));
+    list.innerHTML = `${found.length ? entriesHtml(found, multi ? sel : null) : `<p class="empty">${t('Aucun exercice ne correspond.')}</p>`}
+      <button class="btn ghost block" data-create>${icon('add')}<span>${q.value.trim() ? esc(t('Créer « {name} »', { name: q.value.trim() })) : t('Créer un exercice')}</span></button>`;
+  };
+  q.addEventListener('input', draw);
+  q.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      q.blur();
+    }
+  });
+  list.addEventListener('click', async (e) => {
+    const p = e.target.closest('[data-pick]');
+    if (p) {
+      const key = p.dataset.pick;
+      if (!multi) return onPick?.(key);
+      const i = sel.indexOf(key);
+      if (i >= 0) sel.splice(i, 1);
+      else sel.push(key);
+      draw();
+      onChange?.([...sel]);
+      return;
+    }
+    if (e.target.closest('[data-create]')) {
+      const ex = await editExercise(null, q.value.trim());
+      if (!ex) return;
+      if (!multi) return onCreate?.(ex.id);
+      entries = pickerEntries();
+      sel.push(ex.id);
+      q.value = '';
+      draw();
+      onChange?.([...sel]);
+    }
+  });
+  draw();
+  return {
+    clear() {
+      sel.length = 0;
+      draw();
+      onChange?.([]);
+    },
+    keys: () => [...sel],
+  };
+}
+
 // Ouvre la liste des exercices et renvoie l'id choisi (ou null).
 export function pickExercise(title = t('Ajouter un exercice')) {
   return openSheet({
     title,
     wide: true,
-    body: `<label class="search"><span class="sr-only">${t('Rechercher')}</span>
-        <input type="search" placeholder="${esc(t('Rechercher un exercice'))}" autocomplete="off" data-q autofocus></label>
-      <div class="pick-list" data-list></div>`,
+    tall: true,
+    body: '<div data-picker></div>',
     onMount(el, api) {
-      const list = el.querySelector('[data-list]');
-      const q = el.querySelector('[data-q]');
-      const draw = () => {
-        const term = q.value.trim().toLowerCase();
-        const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-        const found = sortedExercises().filter((ex) => !term || norm(`${ex.name} ${dn(ex.name)}`).includes(norm(term)));
-        list.innerHTML = `${found.length ? exerciseListHtml(found) : `<p class="empty">${t('Aucun exercice ne correspond.')}</p>`}
-          <button class="btn ghost block" data-create>${icon('add')}<span>${term ? esc(t('Créer « {name} »', { name: q.value.trim() })) : t('Créer un exercice')}</span></button>`;
-      };
-      q.addEventListener('input', draw);
-      draw();
-      list.addEventListener('click', async (e) => {
-        const p = e.target.closest('[data-pick]');
-        if (p) return api.close(p.dataset.pick);
-        if (e.target.closest('[data-create]')) {
-          const ex = await editExercise(null, q.value.trim());
-          if (ex) api.close(ex.id);
-        }
+      mountPicker(el.querySelector('[data-picker]'), {
+        onPick: (key) => api.close(resolvePick(key)),
+        onCreate: (id) => api.close(id),
       });
     },
   });
@@ -143,17 +220,11 @@ export function editExercise(ex, presetName = '') {
   });
 }
 
-// Ajoute les exercices courants, dans la langue de l'app, sans doublon (dans l'une ou l'autre langue).
+// Ajoute les exercices du catalogue qui manquent, dans la langue de l'app, sans doublon.
 export function addBaseExercises() {
-  const existing = new Set(store.all('exercises').map((x) => x.name.toLowerCase()));
-  let n = 0;
-  for (const row of calc.BASE_EXERCISES) {
-    const [fr, muscle, equipment, en] = row;
-    if (existing.has(fr.toLowerCase()) || existing.has(en.toLowerCase())) continue;
-    store.save('exercises', { id: store.uuid(), name: calc.baseName(row), muscle, equipment, increment: calc.defaultIncrement(equipment), notes: '' });
-    n++;
-  }
-  return n;
+  const missing = presets.catalogMissing();
+  for (const fr of missing) presets.ensureExercise(fr);
+  return missing.length;
 }
 
 export function workoutRowHtml(w) {
@@ -179,9 +250,11 @@ export function setText(ex, w, r, base = null) {
 export function platesHtml(total, ex, base = null) {
   const s = calc.settings();
   const bar = base?.kind === 'bar' ? base.weight : calc.barWeightOf(ex);
+  // Rappel : la charge saisie est la charge totale, barre comprise (l'app n'ajoute pas la barre)
+  if (total == null) return `<span class="plates-text bar-hint">${esc(t('Saisis la charge totale, barre comprise (barre seule : {w} kg).', { w: calc.fmt(bar) }))}</span>`;
+  if (total === 0) return `<span class="plates-text bar-hint is-warn">${esc(t('0 kg : la barre n’est pas comptée. Saisis la charge totale, barre comprise (barre seule : {w} kg).', { w: calc.fmt(bar) }))}</span>`;
   const res = calc.platesFor(total, bar, s.plates);
-  if (total == null) return '';
-  if (!res) return `<span class="plates-text">${t('Moins que la barre ({w} kg)', { w: calc.fmt(bar) })}</span>`;
+  if (!res) return `<span class="plates-text bar-hint is-warn">${esc(t('Moins que la barre ({w} kg) : saisis la charge totale, barre comprise.', { w: calc.fmt(bar) }))}</span>`;
   if (!res.plates.length) return `<span class="plates-text">${t('Barre seule ({w} kg)', { w: calc.fmt(bar) })}</span>`;
   const maxP = Math.max(...s.plates);
   const glyphs = res.plates
