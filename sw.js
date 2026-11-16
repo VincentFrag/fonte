@@ -1,7 +1,7 @@
 // Service worker : met l'app en cache pour qu'elle s'ouvre sans réseau.
 // À CHAQUE MODIFICATION DES FICHIERS, augmente ce numéro de version
 // pour que les appareils récupèrent la nouvelle version.
-const VERSION = 'fonte-v1.7.0';
+const VERSION = 'fonte-v1.7.1';
 
 const ASSETS = [
   './',
@@ -42,7 +42,10 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys
+        // Seulement les anciens caches de Fonte : d'autres apps peuvent partager le même site
+        .filter((k) => k.startsWith('fonte-') && k !== VERSION)
+        .map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

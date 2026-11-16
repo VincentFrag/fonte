@@ -14,7 +14,7 @@ import {
   renderAccount, renderSettings, renderBackup, renderHelp,
 } from './views/more.js';
 
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.7.1';
 
 const routes = [
   [/^\/seance$/, renderSeance, 'seance'],
@@ -364,10 +364,12 @@ async function hardRefresh(swText) {
   const list = (swText.match(/const ASSETS = \[([\s\S]*?)\];/) || [])[1] || '';
   const assets = [...list.matchAll(/'([^']+)'/g)].map((m) => m[1]);
   await Promise.all(assets.map((u) => fetch(u, { cache: 'reload' }).catch(() => {})));
+  // Seulement le service worker et les caches de Fonte : d'autres apps peuvent partager le même site
+  const scope = new URL('./', location.href).href;
   const regs = await navigator.serviceWorker.getRegistrations();
-  await Promise.all(regs.map((r) => r.unregister()));
+  await Promise.all(regs.filter((r) => r.scope === scope).map((r) => r.unregister()));
   const keys = await caches.keys();
-  await Promise.all(keys.map((k) => caches.delete(k)));
+  await Promise.all(keys.filter((k) => k.startsWith('fonte-')).map((k) => caches.delete(k)));
   location.reload();
   return true;
 }
