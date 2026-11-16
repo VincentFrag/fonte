@@ -12,6 +12,7 @@ An installable web app (PWA) for phone, tablet and computer, in English and Fren
 - also track **cardio** (time, distance, pace) and **timed** exercises;
 - spot your **PRs** (estimated 1RM, Epley formula);
 - follow your **progress** per exercise and your **sets per muscle group**;
+- **stretch** after your workout with a guided routine matched to the muscles you trained;
 - log your **bodyweight**, with a 7-day average and a weekly trend;
 - **sync** your devices, while still working **offline**.
 
@@ -111,14 +112,16 @@ These videos are also in the app: **More > Help and tutorials**.
 ## Getting started
 
 1. **More > Programs > Add a ready-made program**: pick a program from the catalog. Its workout templates and the exercises it needs are created for you, and you can change everything afterwards.
-2. To build your own workouts: **More > Exercises** (the **Add common exercises** button gives you a starter list), then **More > Programs > New**. For each exercise, set the sets, the rep range (for example 8 to 12) and the rest.
-3. **Workout**: tap a program to start. Last time's weights are pre-filled. Check ✓ each finished set: the rest timer starts.
+2. To build your own workouts: **More > Programs > New**. Whenever you pick an exercise, your exercises and the whole catalog are offered. For each exercise, set the sets, the rep range (for example 8 to 12) and the rest.
+3. **Workout**: the **Programs** tab lists your workout templates, tap one to start (its **⋯** menu also lets you remove it). The **Exercises** tab starts a workout with one or more exercises you pick. Last time's weights are pre-filled. Check ✓ each finished set: the rest timer starts. The **Back** arrow keeps the workout for later; **Cancel workout** deletes it without saving anything.
+   For barbell exercises, enter the **total load, bar included**: the app doesn't add the bar's weight.
 4. During the workout, tap an **exercise name** to choose its starting load: a bar (Olympic, EZ, trap bar… or a custom weight), **bodyweight** (you then enter the added weight) or **no bar**. Your choice is kept for the next workouts.
 5. Under each exercise name, **Watch the technique** runs a YouTube search for the exercise. When you find a video or short you want to use as a model, copy its link (**Share > Copy link**), then the exercise's **⋯** menu > **Add my reference video** > **Paste**. The link becomes **Watch my reference video**, on all your devices.
 6. Tap a **set number** to mark it as a warm-up (left out of stats and PRs) or delete it.
 7. **Timed exercises** (core, HIIT): tap **Start the timer**. It runs work and rest intervals with sound cues and checks the sets by itself. In a program, an exercise's **⋯** menu lets you **chain it into a circuit** with its neighbours: the timer then rotates between them, round after round.
 8. **Cardio**: enter the time in minutes and the distance in km; the app works out pace and speed.
-9. **Weight**: weigh yourself in the morning, before eating. Look at the 7-day average and the trend, not today's number.
+9. **Stretching**: at the end of a workout, the summary screen offers a matching routine (30 seconds per stretch, on each side when needed). It's also under **More > Stretching**.
+10. **Weight**: weigh yourself in the morning, before eating. Look at the 7-day average and the trend, not today's number.
 
 ---
 
@@ -234,6 +237,7 @@ fonte/
 │   ├── charts.js           SVG charts
 │   ├── timer.js            Interval timer (HIIT, core)
 │   ├── presets.js          Ready-made program catalog
+│   ├── stretch.js          Stretching: routines and guided timer
 │   ├── ui.js               Sheets, menus, notifications
 │   └── views/              One file per screen
 ├── supabase/schema.sql     Tables, sync and security rules

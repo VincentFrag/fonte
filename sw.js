@@ -1,7 +1,7 @@
 // Service worker : met l'app en cache pour qu'elle s'ouvre sans réseau.
 // À CHAQUE MODIFICATION DES FICHIERS, augmente ce numéro de version
 // pour que les appareils récupèrent la nouvelle version.
-const VERSION = 'fonte-v1.6.2';
+const VERSION = 'fonte-v1.7.0';
 
 const ASSETS = [
   './',
@@ -20,6 +20,7 @@ const ASSETS = [
   './js/presets.js',
   './js/i18n.js',
   './js/clean.js',
+  './js/stretch.js',
   './js/i18n-en.js',
   './js/views/common.js',
   './js/views/workout.js',

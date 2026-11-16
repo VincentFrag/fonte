@@ -12,6 +12,7 @@ Application web installable (PWA) pour téléphone, tablette et ordinateur, en f
 - suivre aussi le **cardio** (durée, distance, allure) et les exercices **en durée** ;
 - repérer les **records** (1RM estimé, formule d'Epley) ;
 - suivre la **progression** par exercice et les **séries par groupe musculaire** ;
+- s'**étirer** après la séance avec une routine guidée, adaptée aux muscles travaillés ;
 - noter son **poids de corps**, avec moyenne sur 7 jours et tendance hebdomadaire ;
 - **synchroniser** ses appareils, tout en continuant à fonctionner **hors connexion**.
 
@@ -111,14 +112,16 @@ Ces vidéos sont aussi dans l'app : **Plus > Aide et tutoriels**.
 ## Premiers pas
 
 1. **Plus > Programmes > Ajouter un programme tout fait** : choisis un programme du catalogue. Ses séances types et les exercices nécessaires sont créés pour toi, et tu peux tout modifier ensuite.
-2. Pour composer tes propres séances : **Plus > Exercices** (le bouton **Ajouter les exercices courants** donne une liste de base), puis **Plus > Programmes > Nouveau**. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
-3. **Séance** : touche un programme pour démarrer. Les charges de la dernière fois sont pré-remplies. Coche ✓ chaque série terminée : le minuteur de repos démarre.
+2. Pour composer tes propres séances : **Plus > Programmes > Nouveau**. Quand tu choisis un exercice, tes exercices et tout le catalogue sont proposés. Pour chaque exercice, indique les séries, la fourchette de répétitions (par exemple 8 à 12) et le repos.
+3. **Séance** : l'onglet **Programmes** liste tes séances types, touche-en une pour démarrer (son menu **⋯** permet aussi de la retirer). L'onglet **Exercices** démarre une séance avec un ou plusieurs exercices choisis. Les charges de la dernière fois sont pré-remplies. Coche ✓ chaque série terminée : le minuteur de repos démarre. La flèche **Retour** garde la séance pour plus tard ; **Annuler la séance** la supprime sans rien enregistrer.
+   Pour les exercices à la barre, saisis la **charge totale, barre comprise** : l'app n'ajoute pas le poids de la barre.
 4. Pendant la séance, touche le **nom d'un exercice** pour choisir sa charge de départ : une barre (olympique, EZ, trap bar… ou un poids personnalisé), le **poids du corps** (tu saisis alors le lest) ou **sans barre**. Le choix est retenu pour les séances suivantes.
 5. Sous le nom de chaque exercice, **Voir la technique** lance une recherche YouTube sur l'exercice. Quand tu trouves une vidéo ou un short qui te sert de modèle, copie son lien (**Partager > Copier le lien**), puis menu **⋯** de l'exercice > **Ajouter ma vidéo de référence** > **Coller**. Le lien devient **Voir ma vidéo de référence**, sur tous tes appareils.
 6. Touche le **numéro d'une série** pour la marquer comme échauffement (exclue des statistiques et des records) ou la supprimer.
 7. **Exercices en durée** (gainage, HIIT) : touche **Lancer le minuteur**. Il enchaîne efforts et récups avec des signaux sonores et coche les séries tout seul. Dans un programme, le menu **⋯** d'un exercice permet de l'**enchaîner en circuit** avec ses voisins : le minuteur tourne alors entre eux, tour après tour.
 8. **Cardio** : saisis la durée en minutes et la distance en km ; l'app calcule l'allure et la vitesse.
-9. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
+9. **Étirements** : à la fin d'une séance, l'écran récapitulatif propose une routine adaptée (30 secondes par étirement, de chaque côté si besoin). Tu la retrouves aussi dans **Plus > Étirements**.
+10. **Poids** : pèse-toi le matin, à jeun. Regarde la moyenne 7 jours et la tendance, pas la pesée du jour.
 
 ---
 
@@ -235,6 +238,7 @@ fonte/
 │   ├── charts.js           Graphiques SVG
 │   ├── timer.js            Minuteur d'intervalles (HIIT, gainage)
 │   ├── presets.js          Catalogue de programmes tout faits
+│   ├── stretch.js          Étirements : routines et déroulé guidé
 │   ├── ui.js               Feuilles, menus, notifications
 │   └── views/              Un fichier par écran
 ├── supabase/schema.sql     Tables, synchro et règles de sécurité

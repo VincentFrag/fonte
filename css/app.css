@@ -337,6 +337,48 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .tpl-list { color: var(--ink-2); font-size: 14px; }
 .tpl-last { color: var(--ink-3); font-size: 13px; margin-top: auto; padding-top: 6px; }
 .tpl-free { background: transparent; border-style: dashed; }
+.tpl-card { position: relative; display: flex; }
+.tpl-card .tpl { flex: 1; width: 100%; padding-right: 48px; }
+.tpl-more { position: absolute; top: 6px; right: 6px; }
+
+/* Onglets Programmes / Exercices */
+.tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 14px;
+  border-radius: 12px; background: var(--surface-2);
+}
+.tab {
+  min-height: 40px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--ink-2); font-weight: 600; font-size: 15px;
+}
+.tab[aria-selected='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(20, 24, 28, .12); }
+.start-block .block-sub { margin-top: 0; }
+
+/* Choix de plusieurs exercices */
+.pick-row .pick-box {
+  flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px;
+  border: 2px solid var(--line); font-stretch: var(--narrow); font-weight: 800; font-size: 15px; color: var(--accent-ink);
+}
+.pick-row[aria-pressed='true'] { background: var(--accent-soft); }
+.pick-row[aria-pressed='true'] .pick-box { background: var(--accent); border-color: var(--accent); }
+.pick-bar {
+  position: sticky; z-index: 5; bottom: calc(var(--nav-h) + var(--safe-b) + 10px);
+  display: flex; gap: 8px; margin-top: 14px; padding: 8px;
+  border-radius: 16px; background: var(--ink); box-shadow: var(--shadow);
+}
+.pick-bar .btn { min-height: 44px; }
+.pick-bar .btn:not(.primary) { background: transparent; border-color: transparent; color: var(--bg); }
+.pick-bar .btn.primary { flex: 1; }
+@media (min-width: 900px) { .pick-bar { bottom: 20px; } }
+
+/* Séance gardée pour plus tard */
+.resume-card {
+  display: flex; align-items: center; gap: 12px; margin-top: 6px; padding: 14px 14px 14px 16px;
+  border-radius: 14px; background: var(--accent-soft); border: 1px solid var(--accent);
+}
+.resume-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.resume-label { font-size: 13px; font-weight: 600; color: var(--accent); }
+.resume-name { font-stretch: var(--narrow); font-weight: 800; font-size: 22px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resume-meta { font-size: 14px; color: var(--ink-2); }
 
 /* ---------- Saisie de séance ---------- */
 .ex { padding: 22px 0 6px; border-bottom: 1px solid var(--line); }
@@ -448,6 +490,11 @@ code { font-size: .92em; background: var(--surface-2); padding: 1px 5px; border-
 .add-ex { margin-top: 20px; }
 .w-notes { margin-top: 18px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); color: var(--ink-2); white-space: pre-wrap; }
 .finish-zone { margin-top: 28px; text-align: center; color: var(--ink-2); font-size: 14px; }
+.leave-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.leave-row .btn { min-height: 44px; padding: 0 10px; font-size: 15px; white-space: normal; line-height: 1.15; }
+.btn.danger-ghost { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.plates-text.bar-hint { color: var(--ink-2); }
+.plates-text.bar-hint.is-warn { color: var(--danger); }
 
 /* Exercices en durée : série, précédent, durée, coche */
 .sets.mode-duree .set-head, .sets.mode-duree .set { grid-template-columns: 40px minmax(0, 1fr) 96px 46px; }
@@ -655,10 +702,13 @@ a.list-row:hover, button.list-row:hover, .hist-row:hover { background: var(--sur
 .search { display: block; position: sticky; top: -1px; background: var(--surface); padding-bottom: 8px; z-index: 1; }
 
 /* ---------- Feuilles modales ---------- */
-.sheet-wrap { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet-wrap {
+  position: fixed; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vv-h, 100%); z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+}
 .sheet-backdrop { position: absolute; inset: 0; background: rgba(10, 12, 15, .5); opacity: 0; transition: opacity .18s; }
 .sheet {
-  position: relative; width: 100%; max-height: calc(100dvh - var(--safe-t) - 24px);
+  position: relative; width: 100%; max-height: calc(var(--vv-h, 100dvh) - var(--safe-t) - 24px);
   display: flex; flex-direction: column;
   background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
   transform: translateY(24px); opacity: 0; transition: transform .2s ease-out, opacity .2s;
@@ -669,9 +719,13 @@ a.list-row:hover, button.list-row:hover, .hist-row:hover { background: var(--sur
 .sheet-wrap.closing .sheet, .sheet-wrap.closing .sheet-backdrop { opacity: 0; }
 @media (min-width: 640px) {
   .sheet-wrap { align-items: center; padding: 24px; }
-  .sheet { max-width: 460px; border-radius: 18px; max-height: 86dvh; }
+  .sheet { max-width: 460px; border-radius: 18px; max-height: min(86dvh, calc(var(--vv-h, 100dvh) - 48px)); }
   .sheet.sheet-wide { max-width: 600px; }
 }
+/* Liste d'exercices : hauteur fixe, pour que la recherche reste en place pendant la frappe */
+.sheet.sheet-tall { height: calc(var(--vv-h, 100dvh) - var(--safe-t) - 24px); }
+@media (min-width: 640px) { .sheet.sheet-tall { height: min(86dvh, calc(var(--vv-h, 100dvh) - 48px)); } }
+.sheet-tall .sheet-body { flex: 1; }
 .sheet-head { display: flex; align-items: center; gap: 8px; padding: 14px 10px 6px 18px; }
 .sheet-head h2 { flex: 1; font-stretch: var(--narrow); font-weight: 800; font-size: 23px; line-height: 1.1; }
 .sheet-body { padding: 8px 18px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -781,3 +835,38 @@ body.timer-open { overflow: hidden; }
   .set-check, .set-num, .plate { border: 1px solid CanvasText; }
   .set.is-done .set-check { background: Highlight; }
 }
+.base-help { margin: 0 0 10px; font-size: 14px; color: var(--ink-2); }
+
+/* Fin du repos : l'écran clignote en vert (en plus du son) */
+body.rest-flash::after {
+  content: ''; position: fixed; inset: 0; z-index: 25; pointer-events: none;
+  border: 10px solid var(--done); animation: rest-flash 1.6s ease-out forwards;
+}
+@keyframes rest-flash { 0%, 40% { opacity: 1; } 20%, 60% { opacity: .2; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { body.rest-flash::after { animation: none; } }
+.test-sound { margin: -4px 0 14px; }
+.test-sound .icon { fill: currentColor; width: 16px; height: 16px; }
+
+/* ---------- Étirements ---------- */
+.stretch-block {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line);
+}
+.stretch-text { flex: 1 1 260px; min-width: 0; }
+.stretch-text .block-title { margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.stretch-text p { color: var(--ink-2); font-size: 15px; }
+.stretch-text .stretch-list { color: var(--ink-3); font-size: 14px; margin-top: 2px; }
+.stretch-block .btn .icon, .stretch-card .btn .icon { fill: currentColor; width: 16px; height: 16px; }
+.tag.done-tag { background: var(--done-soft); color: var(--done); gap: 3px; font-stretch: 100%; }
+.tag.done-tag .icon { width: 14px; height: 14px; }
+.stretch-card { margin-top: 18px; padding: 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.stretch-card .block-title { margin-bottom: 2px; }
+.stretch-card .block-sub { margin: 0 0 10px; }
+.stretch-ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+.stretch-ol li { font-size: 15px; }
+.stretch-ol li span { color: var(--ink-3); margin-left: 8px; font-size: 14px; }
+.stretch-wrap[data-phase='hold'] { background: #1F5BB8; }
+.stretch-wrap[data-phase='done'] { background: #1D7F42; }
+.stretch-wrap .timer-ex { font-size: 24px; font-weight: 800; font-stretch: var(--narrow); opacity: 1; }
+.stretch-how { max-width: 34em; font-size: 16px; line-height: 1.4; opacity: .9; margin-bottom: 4px; }
+.stretch-wrap .timer-time { font-size: min(34vw, 30vh); }

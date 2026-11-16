@@ -5,6 +5,7 @@ import { esc, icon, menuSheet, confirmSheet, toast } from '../ui.js';
 import { workoutRowHtml, setText } from './common.js';
 import { textSheet } from './workout.js';
 import { t, tp, dn } from '../i18n.js';
+import { stretchBlockHtml, openStretches, routineFor } from '../stretch.js';
 
 export function renderHistory(view, ctx) {
   const list = [...calc.finishedWorkouts()].reverse();
@@ -79,6 +80,8 @@ export function renderHistoryDetail(view, ctx, id) {
   }).join('');
 
   const fig = (value, label, cls = '') => `<div class="figure ${cls}"><span class="fig-value">${value}</span><span class="fig-label">${label}</span></div>`;
+  // Séance tout juste terminée : les étirements sont proposés en haut
+  const fresh = Date.now() - Date.parse(w.ended_at) < 3 * 3600000;
   view.innerHTML = `
     ${ctx.pageHead(dn(w.name) || t('Séance'), {
       back: '/historique',
@@ -95,9 +98,15 @@ export function renderHistoryDetail(view, ctx, id) {
       ${records.size ? fig(records.size, tp(records.size, 'record', 'records'), 'is-record') : ''}
     </div>
     ${w.notes ? `<p class="w-notes">${esc(w.notes)}</p>` : ''}
-    <div class="d-grid">${items || `<p class="empty">${t('Aucune série enregistrée.')}</p>`}</div>`;
+    ${fresh ? stretchBlockHtml(w) : ''}
+    <div class="d-grid">${items || `<p class="empty">${t('Aucune série enregistrée.')}</p>`}</div>
+    ${fresh ? '' : stretchBlockHtml(w)}`;
 
   view.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-stretch]')) {
+      openStretches(ctx, routineFor(w), { workoutId: w.id, onEnd: () => ctx.render() });
+      return;
+    }
     if (!e.target.closest('[data-menu]')) return;
     const c = await menuSheet(dn(w.name) || t('Séance'), [
       { label: t('Créer un programme à partir de cette séance'), value: 'tpl' },

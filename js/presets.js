@@ -3,56 +3,8 @@ import * as store from './store.js';
 import * as calc from './calc.js';
 import { t, lang, registerNames, registerKnown } from './i18n.js';
 
-// Exercices utilisés par le catalogue : nom français → [groupe musculaire, type, nom anglais]
-const EXERCISES = {
-  'Développé couché': ['Pectoraux', 'barre', 'Bench press'],
-  'Développé incliné haltères': ['Pectoraux', 'halteres', 'Incline dumbbell press'],
-  'Écarté à la poulie': ['Pectoraux', 'poulie', 'Cable fly'],
-  'Dips': ['Pectoraux', 'pdc', 'Dips'],
-  'Pompes': ['Pectoraux', 'pdc', 'Push-ups'],
-  'Tractions': ['Dos', 'pdc', 'Pull-ups'],
-  'Rowing barre': ['Dos', 'barre', 'Barbell row'],
-  'Rowing haltère': ['Dos', 'halteres', 'One-arm dumbbell row'],
-  'Rowing inversé': ['Dos', 'pdc', 'Inverted row'],
-  'Tirage vertical': ['Dos', 'poulie', 'Lat pulldown'],
-  'Tirage horizontal': ['Dos', 'poulie', 'Seated cable row'],
-  'Soulevé de terre': ['Dos', 'barre', 'Deadlift'],
-  'Développé militaire': ['Épaules', 'barre', 'Overhead press'],
-  'Développé militaire haltères': ['Épaules', 'halteres', 'Dumbbell shoulder press'],
-  'Élévations latérales': ['Épaules', 'halteres', 'Lateral raise'],
-  'Oiseau haltères': ['Épaules', 'halteres', 'Rear delt fly'],
-  'Face pull': ['Épaules', 'poulie', 'Face pull'],
-  'Curl barre': ['Biceps', 'barre', 'Barbell curl'],
-  'Curl marteau': ['Biceps', 'halteres', 'Hammer curl'],
-  'Extension triceps à la poulie': ['Triceps', 'poulie', 'Triceps pushdown'],
-  'Barre au front': ['Triceps', 'barre', 'Skull crusher'],
-  'Squat': ['Quadriceps', 'barre', 'Squat'],
-  'Presse à cuisses': ['Quadriceps', 'machine', 'Leg press'],
-  'Leg extension': ['Quadriceps', 'machine', 'Leg extension'],
-  'Fentes haltères': ['Quadriceps', 'halteres', 'Dumbbell lunge'],
-  'Squat bulgare': ['Quadriceps', 'pdc', 'Bulgarian split squat'],
-  'Fentes au poids du corps': ['Quadriceps', 'pdc', 'Bodyweight lunge'],
-  'Soulevé de terre jambes tendues': ['Ischios', 'barre', 'Romanian deadlift'],
-  'Leg curl': ['Ischios', 'machine', 'Leg curl'],
-  'Hip thrust': ['Fessiers', 'barre', 'Hip thrust'],
-  'Pont fessier': ['Fessiers', 'pdc', 'Glute bridge'],
-  'Mollets debout': ['Mollets', 'machine', 'Standing calf raise'],
-  'Crunch à la poulie': ['Abdos', 'poulie', 'Cable crunch'],
-  'Relevés de jambes': ['Abdos', 'pdc', 'Leg raises'],
-  'Planche': ['Abdos', 'duree', 'Plank'],
-  'Planche latérale': ['Abdos', 'duree', 'Side plank'],
-  'Hollow hold': ['Abdos', 'duree', 'Hollow hold'],
-  'Burpees': ['Corps entier', 'duree', 'Burpees'],
-  'Mountain climbers': ['Corps entier', 'duree', 'Mountain climbers'],
-  'Jumping jacks': ['Corps entier', 'duree', 'Jumping jacks'],
-  'Montées de genoux': ['Corps entier', 'duree', 'High knees'],
-  'Squats sautés': ['Quadriceps', 'duree', 'Jump squats'],
-  'Fentes sautées': ['Quadriceps', 'duree', 'Jump lunges'],
-  'Course à pied': ['Cardio', 'cardio', 'Running'],
-  'Vélo': ['Cardio', 'cardio', 'Cycling'],
-  'Rameur': ['Cardio', 'cardio', 'Rowing machine'],
-  'Elliptique': ['Cardio', 'cardio', 'Elliptical'],
-};
+// Exercices du catalogue : nom français → [groupe musculaire, type, nom anglais]
+const EXERCISES = Object.fromEntries(calc.CATALOG.map(([fr, muscle, equipment, en]) => [fr, [muscle, equipment, en]]));
 
 // Raccourcis d'écriture
 const R = (ex, sets, min, max, rest) => ({ ex, sets, rep_min: min, rep_max: max, rest_sec: rest });
@@ -202,11 +154,28 @@ export function exLabel(fr) {
 }
 
 // Cherche l'exercice chez l'utilisateur, sous son nom français ou anglais
-function findExercise(fr) {
+export function findExercise(fr) {
   const names = new Set([fr, EXERCISES[fr]?.[2]].filter(Boolean).map((n) => n.toLowerCase()));
   const list = store.all('exercises');
   return list.find((e) => e.name.toLowerCase() === exLabel(fr).toLowerCase())
     || list.find((e) => names.has(e.name.toLowerCase())) || null;
+}
+
+// Renvoie l'exercice du catalogue chez l'utilisateur, en le créant s'il manque.
+export function ensureExercise(fr) {
+  const found = findExercise(fr);
+  if (found) return found;
+  const [muscle, equipment] = EXERCISES[fr] || ['Autre', 'autre'];
+  return store.save('exercises', {
+    id: store.uuid(), name: exLabel(fr), muscle, equipment,
+    increment: ['duree', 'cardio'].includes(equipment) ? null : calc.defaultIncrement(equipment),
+    notes: '',
+  });
+}
+
+// Exercices du catalogue que l'utilisateur n'a pas encore (nom français)
+export function catalogMissing() {
+  return calc.CATALOG.map((r) => r[0]).filter((fr) => !findExercise(fr));
 }
 
 // Exercices du programme qui n'existent pas encore chez l'utilisateur
@@ -216,18 +185,7 @@ export function missingExercises(p) {
 
 export function addProgram(p) {
   const ids = {};
-  for (const fr of programExercises(p)) {
-    let ex = findExercise(fr);
-    if (!ex) {
-      const [muscle, equipment] = EXERCISES[fr] || ['Autre', 'autre'];
-      ex = store.save('exercises', {
-        id: store.uuid(), name: exLabel(fr), muscle, equipment,
-        increment: ['duree', 'cardio'].includes(equipment) ? null : calc.defaultIncrement(equipment),
-        notes: '',
-      });
-    }
-    ids[fr] = ex.id;
-  }
+  for (const fr of programExercises(p)) ids[fr] = ensureExercise(fr).id;
   const names = new Set(store.all('templates').map((x) => x.name.toLowerCase()));
   let position = store.all('templates').length;
   const created = [];
